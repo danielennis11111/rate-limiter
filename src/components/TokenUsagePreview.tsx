@@ -73,12 +73,12 @@ export const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
   if (!inputText && !knowledgeBaseEnabled) return null;
 
   return (
-    <div className={`rounded-lg border transition-colors ${
+    <div className={`rounded-lg border p-4 transition-colors ${
       willExceedLimit 
         ? 'bg-red-50 border-red-200' 
         : isNearLimit 
-          ? 'bg-yellow-50 border-yellow-200' 
-          : 'bg-blue-50 border-blue-200'
+          ? 'bg-yellow-50 border-yellow-200'
+          : 'bg-red-50 border-red-200'
     }`}>
       {/* Minimized View */}
       <div className="p-3">
@@ -88,13 +88,13 @@ export const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
         >
           <div className="flex items-center space-x-2">
             <Zap className={`w-4 h-4 ${
-              willExceedLimit ? 'text-red-500' : isNearLimit ? 'text-yellow-500' : 'text-blue-500'
+              willExceedLimit ? 'text-red-500' : isNearLimit ? 'text-yellow-500' : 'text-asu-maroon'
             }`} />
             <span className="text-sm font-semibold text-gray-900">
               Token Usage Preview
             </span>
             <span className={`text-sm font-medium ${
-              willExceedLimit ? 'text-red-700' : isNearLimit ? 'text-yellow-700' : 'text-blue-700'
+              willExceedLimit ? 'text-red-500' : isNearLimit ? 'text-yellow-500' : 'text-asu-maroon'
             }`}>
               {usage.total.toLocaleString()} / {contextInfo.maxTokens.toLocaleString()}
             </span>
@@ -119,8 +119,8 @@ export const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
                 willExceedLimit 
                   ? 'bg-red-500' 
                   : isNearLimit 
-                    ? 'bg-yellow-500' 
-                    : 'bg-blue-500'
+                    ? 'bg-yellow-500'
+                    : 'bg-asu-maroon'
               }`}
               style={{ width: `${Math.min(usagePercentage, 100)}%` }}
             />

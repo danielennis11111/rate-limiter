@@ -112,13 +112,13 @@ export const MainContent: React.FC<MainContentProps> = ({
                   <div
                     className={`max-w-3xl rounded-lg px-4 py-3 ${
                       message.isUser
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-asu-maroon text-white'
                         : 'bg-white text-gray-900 border border-gray-200'
                     }`}
                   >
                     <p className="text-sm leading-relaxed">{message.content}</p>
                     <p className={`text-xs mt-2 ${
-                      message.isUser ? 'text-blue-100' : 'text-gray-500'
+                      message.isUser ? 'text-red-100' : 'text-gray-500'
                     }`}>
                       {message.timestamp.toLocaleTimeString()}
                     </p>
@@ -140,7 +140,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     <p className={`text-sm leading-relaxed mb-3 transition-colors ${
                       rateLimitInfo.isBlocked 
                         ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-gray-700 hover:text-blue-600'
+                        : 'text-gray-700 hover:text-asu-maroon'
                     }`}>
                       {prompt.title}
                     </p>
@@ -161,7 +161,7 @@ export const MainContent: React.FC<MainContentProps> = ({
             <div className={`flex items-end rounded-lg border transition-colors ${
               rateLimitInfo.isBlocked 
                 ? 'bg-gray-100 border-gray-300' 
-                : 'bg-gray-50 border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500'
+                : 'bg-gray-50 border-gray-200 focus-within:border-asu-maroon focus-within:ring-1 focus-within:ring-asu-maroon'
             }`}>
               <textarea
                 value={inputValue}

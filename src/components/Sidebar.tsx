@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-4">
           <button
             onClick={onNewConversation}
-            className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full flex items-center justify-center px-4 py-2 bg-asu-maroon text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Chat
@@ -103,13 +103,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       key={conversation.id}
                       onClick={() => onSelectConversation(conversation.id)}
                       className={`
-                        w-full text-left px-3 py-2 rounded-lg flex items-start space-x-3
-                        hover:bg-gray-100 transition-colors group
-                        ${activeConversationId === conversation.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}
-                      `}
+                        w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-left ${
+                          activeConversationId === conversation.id ? 'bg-red-50 text-asu-maroon' : 'text-gray-700'
+                        }`}
                     >
-                      <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                        activeConversationId === conversation.id ? 'text-blue-500' : 'text-gray-400'
+                      <MessageSquare className={`w-5 h-5 ${
+                        activeConversationId === conversation.id ? 'text-asu-maroon' : 'text-gray-400'
                       }`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">

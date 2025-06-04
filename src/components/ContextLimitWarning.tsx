@@ -63,7 +63,7 @@ export const ContextLimitWarning: React.FC<ContextLimitWarningProps> = ({
           <div className="flex flex-wrap gap-2">
             <button
               onClick={onStartNewChat}
-              className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-3 py-1.5 bg-asu-maroon text-white text-sm rounded-md hover:bg-red-700 transition-colors"
             >
               <MessageSquare className="w-4 h-4 mr-1" />
               Start New Chat
