@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <img 
               src={`${process.env.PUBLIC_URL}/site-logo.png`}
               alt="Site Logo" 
-              className="w-8"
+              className="w-14 pl-2"
             />
             <span className="font-semibold text-gray-900 text-xl">AI @ ASU</span>
           </div>
