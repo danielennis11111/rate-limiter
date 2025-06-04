@@ -65,10 +65,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-asu-maroon rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">ASU</span>
-            </div>
-            <span className="font-semibold text-gray-900">Unblock and Focus</span>
+            <img 
+              src="/site-logo.png" 
+              alt="Site Logo" 
+              className="w-14 pl-2"
+            />
+            <h1 className="font-semibold text-gray-900 text-xl">AI @ ASU</h1>
           </div>
           <button
             onClick={onToggle}
@@ -104,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onClick={() => onSelectConversation(conversation.id)}
                       className={`
                         w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-left ${
-                          activeConversationId === conversation.id ? 'bg-red-50 text-asu-maroon' : 'text-gray-700'
+                          activeConversationId === conversation.id ? 'bg-gray-100 text-asu-maroon' : 'text-gray-700'
                         }`}
                     >
                       <MessageSquare className={`w-5 h-5 ${

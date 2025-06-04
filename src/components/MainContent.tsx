@@ -76,11 +76,11 @@ export const MainContent: React.FC<MainContentProps> = ({
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-asu-maroon rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">ASU</span>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center">
+              <span className="text-2xl">✨</span>
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Unblock and Focus</h1>
+              <h1 className="text-lg font-semibold text-gray-900">Custom AI: Unblock and Focus</h1>
               <p className="text-sm text-gray-600">Help use writing to resolve mental blockers and stay focused with the help of AI</p>
             </div>
           </div>
@@ -89,7 +89,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6 lg:px-6">
+        <div className="max-w-6xl mx-auto px-4 py-6 lg:px-6">
           {/* Context Warning */}
           {showWarning && (
             <ContextLimitWarning
@@ -107,18 +107,36 @@ export const MainContent: React.FC<MainContentProps> = ({
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                  className={`flex items-start space-x-3 ${message.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
                 >
-                  <div
-                    className={`max-w-3xl rounded-lg px-4 py-3 ${
-                      message.isUser
-                        ? 'bg-asu-maroon text-white'
-                        : 'bg-white text-gray-900 border border-gray-200'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
-                    <p className={`text-xs mt-2 ${
-                      message.isUser ? 'text-red-100' : 'text-gray-500'
+                  {/* Avatar */}
+                  <div className="flex-shrink-0">
+                    {message.isUser ? (
+                      <img
+                        src="https://webapp4.asu.edu/photo-ws/directory_photo/dennis4?size=medium&break=1749066236&blankImage2=1"
+                        alt="Daniel Ennis"
+                        className="w-8 h-8 rounded-full border-2 border-asu-maroon object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-100 bg-white">
+                        <span className="text-lg">✨</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Message Content */}
+                  <div className={`flex flex-col ${message.isUser ? 'items-end' : 'items-start'}`}>
+                    <div
+                      className={`max-w-3xl rounded-lg px-4 py-3 ${
+                        message.isUser
+                          ? 'bg-gray-100 text-gray-900 border border-gray-200'
+                          : 'bg-white text-gray-900 border border-gray-200'
+                      }`}
+                    >
+                      <p className="text-sm leading-relaxed">{message.content}</p>
+                    </div>
+                    <p className={`text-xs mt-1 ${
+                      message.isUser ? 'text-gray-500' : 'text-gray-500'
                     }`}>
                       {message.timestamp.toLocaleTimeString()}
                     </p>
