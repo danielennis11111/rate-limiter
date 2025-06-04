@@ -66,11 +66,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <img 
-              src="/site-logo.png" 
+              src={`${process.env.PUBLIC_URL}/site-logo.png`}
               alt="Site Logo" 
-              className="w-14 pl-2"
+              className="w-8"
             />
-            <h1 className="font-semibold text-gray-900 text-xl">AI @ ASU</h1>
+            <span className="font-semibold text-gray-900">AI @ ASU</span>
           </div>
           <button
             onClick={onToggle}

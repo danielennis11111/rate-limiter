@@ -76,9 +76,11 @@ export const MainContent: React.FC<MainContentProps> = ({
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center">
-              <span className="text-2xl">✨</span>
-            </div>
+            <img 
+              src={`${process.env.PUBLIC_URL}/site-logo.png`}
+              alt="Site Logo" 
+              className="w-10"
+            />
             <div>
               <h1 className="text-lg font-semibold text-gray-900">Custom AI: Unblock and Focus</h1>
               <p className="text-sm text-gray-600">Help use writing to resolve mental blockers and stay focused with the help of AI</p>
