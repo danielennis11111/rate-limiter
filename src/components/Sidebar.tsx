@@ -70,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               alt="Site Logo" 
               className="w-8"
             />
-            <span className="font-semibold text-gray-900">AI @ ASU</span>
+            <span className="font-semibold text-gray-900 text-xl">AI @ ASU</span>
           </div>
           <button
             onClick={onToggle}
