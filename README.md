@@ -1,6 +1,6 @@
-# Unblock and Focus - AI Chat Interface
+# Unblock and Focus - AI Chat Interface with Rate Limiting
 
-A modern React application that recreates the "Unblock and Focus" AI chat interface with a context window limit warning feature. This application demonstrates how to handle AI model context limitations by warning users when they're approaching their token limits and providing options to start new conversations or switch to models with larger context windows.
+A modern React application that recreates the "Unblock and Focus" AI chat interface with context window limit warnings and smart rate limiting indicators. This application demonstrates how to handle AI model context limitations and API rate limits by providing real-time feedback to users.
 
 ## Features
 
@@ -10,13 +10,27 @@ A modern React application that recreates the "Unblock and Focus" AI chat interf
 - **Suggested prompts** for Learn, Practice, and Explore categories
 - **Mobile-responsive design** with collapsible sidebar
 
-### Context Window Management (New Feature)
+### Context Window Management
 - **Real-time token tracking** for conversations
 - **Visual warning system** when approaching context limits (75% threshold)
 - **Progress bar** showing current context window usage
 - **Model switching recommendations** for higher token limits
 - **"Start New Chat" quick action** to avoid truncation
 - **Different warning levels** (warning at 75%, critical at 90%)
+
+### Rate Limiting System (New Feature)
+- **Smart rate limit indicator** that appears from the 11th request onwards
+- **15 requests per minute** with visual countdown timer
+- **Progressive UI states** (green → yellow → red) based on usage
+- **Automatic UI disabling** when rate limit is reached
+- **60-second reset timer** with auto-refresh
+- **Clean interface** that hides indicators when not needed
+
+### Token Usage Preview
+- **Real-time token estimation** as users type (expandable/collapsible)
+- **Detailed breakdown**: user input, AI response, knowledge base scan, system instructions
+- **Live updates** showing total estimated tokens for the request
+- **Color-coded warnings** to prevent context window overflow
 
 ### Technical Features
 - **TypeScript** for type safety
@@ -57,12 +71,20 @@ The application automatically loads with a high-token conversation to demonstrat
 - Token usage statistics and progress bar
 - Options to start a new chat or switch to a higher-capacity model
 
-### Testing the Feature
+### Testing Rate Limiting
 
-1. **Load the demo conversation**: The app starts with a conversation that has high token usage
-2. **Send messages**: Add more messages to see token count increase
-3. **Try model switching**: Click the model recommendations to switch to higher-capacity models
-4. **Start new chat**: Use the "Start New Chat" button to reset token usage
+The app starts with 9 requests already used (out of 15 per minute):
+
+1. **Send 2 more messages** to trigger the rate limit indicator (appears at 11th request)
+2. **Continue sending** to reach the 15-request limit
+3. **Watch the countdown timer** as it resets every minute
+4. **See UI changes** as the interface becomes disabled when rate limited
+
+### Testing Token Preview
+
+- **Start typing** in the input box to see real-time token estimation
+- **Expand/collapse** the token breakdown for detailed information
+- **Watch color changes** as estimated tokens approach context limits
 
 ### Creating New Conversations
 
@@ -76,6 +98,8 @@ The application automatically loads with a high-token conversation to demonstrat
 src/
 ├── components/
 │   ├── ContextLimitWarning.tsx    # Context window warning component
+│   ├── TokenUsagePreview.tsx      # Real-time token estimation
+│   ├── RateLimitIndicator.tsx     # Smart rate limiting display
 │   ├── MainContent.tsx            # Main chat interface
 │   └── Sidebar.tsx                # Conversation history sidebar
 ├── utils/
@@ -94,6 +118,18 @@ src/
 - Provides actionable recommendations
 - Can be dismissed by users
 
+### RateLimitIndicator
+- Smart visibility (only shows from 11th request onwards)
+- Live countdown with remaining requests
+- Progressive color coding based on usage level
+- Auto-reset functionality every minute
+
+### TokenUsagePreview
+- Real-time token estimation while typing
+- Expandable detailed breakdown
+- Color-coded warnings for context limits
+- Includes knowledge base scan costs
+
 ### Token Management
 - Estimates tokens based on character count (~4 chars per token)
 - Tracks cumulative conversation token usage
@@ -104,12 +140,13 @@ src/
 
 For production implementation:
 
-1. **Real API integration** with actual AI models
+1. **Real API integration** with actual AI models and rate limiting
 2. **Accurate token counting** using model-specific tokenizers
 3. **Conversation truncation** logic for approaching limits
 4. **User preferences** for warning thresholds
 5. **Model auto-switching** based on conversation complexity
 6. **Token usage analytics** and insights
+7. **Persistent rate limit state** across sessions
 
 ## Development
 
@@ -119,4 +156,4 @@ Built with:
 - Tailwind CSS
 - Lucide React (icons)
 
-The application uses mock data to simulate real AI conversations and token counting. The context window warning system is fully functional and demonstrates the user experience for managing token limits. 
+The application uses mock data to simulate real AI conversations, token counting, and rate limiting. Both the context window warning system and rate limiting indicators are fully functional and demonstrate the user experience for managing API constraints in AI chat applications.
