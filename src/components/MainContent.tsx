@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Menu, ArrowUp } from 'lucide-react';
-import { Message, ContextWindowInfo, ModelInfo, RateLimitInfo } from '../types';
+import { Message, ContextWindowInfo, ModelInfo, RateLimitInfo, PDFDocument } from '../types';
 import { ContextLimitWarning } from './ContextLimitWarning';
 import { TokenUsagePreview } from './TokenUsagePreview';
 import { RateLimitIndicator } from './RateLimitIndicator';
+import { RAGControls } from './RAGControls';
 
 interface MainContentProps {
   messages: Message[];
@@ -16,6 +17,13 @@ interface MainContentProps {
   rateLimitInfo: RateLimitInfo;
   onRateLimitReset: () => void;
   showRateLimit: boolean;
+  onToggleOptimization: () => void;
+  optimizationActive: boolean;
+  ragEnabled: boolean;
+  onToggleRAG: (enabled: boolean) => void;
+  uploadedPDFs: PDFDocument[];
+  onUploadPDF: (file: File) => Promise<void>;
+  onRemovePDF: (id: string) => void;
 }
 
 export const MainContent: React.FC<MainContentProps> = ({
@@ -28,16 +36,22 @@ export const MainContent: React.FC<MainContentProps> = ({
   onSwitchModel,
   rateLimitInfo,
   onRateLimitReset,
-  showRateLimit
+  showRateLimit,
+  onToggleOptimization,
+  optimizationActive,
+  ragEnabled,
+  onToggleRAG,
+  uploadedPDFs,
+  onUploadPDF,
+  onRemovePDF
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [showWarning, setShowWarning] = useState(true);
-  const [knowledgeBaseEnabled] = useState(false); // Managed elsewhere, just for token preview
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && !rateLimitInfo.isBlocked) {
-      onSendMessage(inputValue.trim(), knowledgeBaseEnabled);
+      onSendMessage(inputValue.trim(), ragEnabled);
       setInputValue('');
     }
   };
@@ -68,20 +82,22 @@ export const MainContent: React.FC<MainContentProps> = ({
     <div className="flex-1 flex flex-col bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 lg:px-6">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 rounded-md hover:bg-gray-100"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-gray-100 bg-white">
-                        <span className="text-lg">✨</span>
-                      </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">Custom AI: Unblock and Focus</h1>
-              <p className="text-sm text-gray-600">Help use writing to resolve mental blockers and stay focused with the help of AI</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onToggleSidebar}
+              className="lg:hidden p-2 rounded-md hover:bg-gray-100"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 border-gray-200 bg-white">
+                <span className="text-2xl">✨</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">Unblock and Focus</h1>
+                <p className="text-sm text-gray-600">Help use writing to resolve mental blockers and stay focused with the help of AI</p>
+              </div>
             </div>
           </div>
         </div>
@@ -213,11 +229,29 @@ export const MainContent: React.FC<MainContentProps> = ({
           </form>
 
           {/* Token Usage Preview */}
+          {/* RAG Controls */}
+          <div className="mb-4">
+            <RAGControls
+              ragEnabled={ragEnabled}
+              onToggleRAG={onToggleRAG}
+              uploadedPDFs={uploadedPDFs}
+              onUploadPDF={onUploadPDF}
+              onRemovePDF={onRemovePDF}
+            />
+          </div>
+
+          {/* Token Usage Preview */}
           <div className="mb-4">
             <TokenUsagePreview
               inputText={inputValue}
               contextInfo={contextInfo}
-              knowledgeBaseEnabled={knowledgeBaseEnabled}
+              knowledgeBaseEnabled={ragEnabled}
+              onCompress={onToggleOptimization}
+              compressionEnabled={optimizationActive}
+              availableModels={availableModels}
+              onSwitchModel={onSwitchModel}
+              ragTokenCount={uploadedPDFs.reduce((sum, pdf) => sum + pdf.tokenCount, 0)}
+              ragDocumentCount={uploadedPDFs.length}
             />
           </div>
 
