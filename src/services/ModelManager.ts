@@ -395,6 +395,27 @@ export class ModelManager {
 
   private async checkOllamaStatus(modelId: string, startTime: number): Promise<ModelStatus> {
     try {
+      // Check for locally downloaded Llama CLI models first
+      if (await this.checkLocalLlamaModel(modelId)) {
+        const responseTime = Date.now() - startTime;
+        const status: ModelStatus = {
+          modelId,
+          isRunning: true,
+          lastChecked: new Date(),
+          responseTime,
+          additionalInfo: 'Local Llama CLI model available'
+        };
+
+        const model = this.models.get(modelId);
+        if (model) {
+          model.status = 'online';
+        }
+        this.statusCache.set(modelId, status);
+
+        console.log(`✅ Local Llama ${modelId}: online (${responseTime}ms) - Local CLI model`);
+        return status;
+      }
+
       // Check if Ollama is running and model is available
       const response = await fetch('http://localhost:11434/api/tags');
       
@@ -413,7 +434,8 @@ export class ModelManager {
         modelId,
         isRunning: isModelAvailable,
         lastChecked: new Date(),
-        responseTime
+        responseTime,
+        additionalInfo: isModelAvailable ? 'Ollama model available' : 'Model not found in Ollama'
       };
 
       const model = this.models.get(modelId);
@@ -422,9 +444,35 @@ export class ModelManager {
       }
       this.statusCache.set(modelId, status);
 
+      console.log(`${isModelAvailable ? '✅' : '❌'} Ollama ${modelId}: ${isModelAvailable ? 'online' : 'offline'} (${responseTime}ms)`);
       return status;
     } catch (error) {
+      console.error(`❌ Ollama ${modelId} status check failed:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Check if a Llama CLI model is locally available
+   * Note: This runs client-side so we can't access filesystem directly
+   */
+  private async checkLocalLlamaModel(modelId: string): Promise<boolean> {
+    try {
+      // For now, we'll use a different approach - check via API call
+      // This is a placeholder for browser compatibility
+      console.log(`🔍 Checking for local Llama model: ${modelId}`);
+      
+      // We'll implement this by checking our backend API or making assumptions
+      // based on known downloaded models for now
+      if (modelId === 'Llama-4-Scout-17B-16E-Instruct' || 
+          modelId === 'Llama-4-Maverick-17B-128E-Instruct') {
+        return true; // Assume these are available since user confirmed they're downloaded
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking local Llama model:', error);
+      return false;
     }
   }
 

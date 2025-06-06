@@ -1,4 +1,5 @@
 import { LlamaService } from '../utils/llamaService';
+import { LlamaStackService } from './LlamaStackService';
 import { GeminiService } from './GeminiService';
 import { OpenAIService } from './OpenAIService';
 
@@ -40,11 +41,13 @@ interface AIOptions {
  */
 export class AIServiceRouter {
   private llamaService: LlamaService;
+  private llamaStackService: LlamaStackService;
   private geminiService: GeminiService | null = null;
   private openaiService: OpenAIService | null = null;
 
   constructor() {
     this.llamaService = new LlamaService();
+    this.llamaStackService = new LlamaStackService();
     
     // Initialize Gemini service if API key is available
     const geminiApiKey = process.env.REACT_APP_GEMINI_API_KEY;
@@ -77,6 +80,8 @@ export class AIServiceRouter {
       return this.sendToOpenAI(messages, modelId, options);
     } else if (this.isGeminiModel(modelId) && this.geminiService) {
       return this.sendToGemini(messages, modelId, options);
+    } else if (this.isLlamaStackModel(modelId)) {
+      return this.sendToLlamaStack(messages, modelId, options);
     } else {
       return this.sendToLlama(messages, modelId, options);
     }
@@ -96,6 +101,8 @@ export class AIServiceRouter {
       yield* this.streamFromOpenAI(messages, modelId, options);
     } else if (this.isGeminiModel(modelId) && this.geminiService) {
       yield* this.streamFromGemini(messages, modelId, options);
+    } else if (this.isLlamaStackModel(modelId)) {
+      yield* this.streamFromLlamaStack(messages, modelId, options);
     } else {
       yield* this.streamFromLlama(messages, modelId, options);
     }
@@ -127,6 +134,13 @@ export class AIServiceRouter {
    */
   private isGeminiModel(modelId: string): boolean {
     return modelId.startsWith('gemini');
+  }
+
+  /**
+   * Check if model should use Llama Stack CLI (for Llama 4 models)
+   */
+  private isLlamaStackModel(modelId: string): boolean {
+    return modelId.startsWith('Llama-4-') && this.llamaStackService.isModelAvailable(modelId);
   }
 
   /**
@@ -320,6 +334,30 @@ Make your responses visually appealing and easy to scan with proper formatting.`
   }
 
   /**
+   * Send request to Llama Stack CLI service (for Llama 4 models)
+   */
+  private async sendToLlamaStack(
+    messages: AIMessage[],
+    modelId: string,
+    options: AIOptions
+  ): Promise<AIResponse> {
+    console.log(`🦙 Sending request to Llama Stack model: ${modelId}`);
+    
+    const stackMessages = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    const response = await this.llamaStackService.sendMessage(stackMessages, modelId, options);
+    
+    return {
+      content: response.content,
+      usage: response.usage,
+      model: response.model
+    };
+  }
+
+  /**
    * Send request to Llama service
    */
   private async sendToLlama(
@@ -429,6 +467,29 @@ Make your responses visually appealing and easy to scan with proper formatting.`
     } catch (error) {
       console.error('🚨 Gemini streaming error, falling back to Llama:', error);
       yield* this.streamFromLlama(messages, modelId, options);
+    }
+  }
+
+  /**
+   * Stream request to Llama Stack CLI service (for Llama 4 models)
+   */
+  private async *streamFromLlamaStack(
+    messages: AIMessage[],
+    modelId: string,
+    options: AIOptions
+  ): AsyncGenerator<string, void, unknown> {
+    try {
+      console.log(`🦙 Streaming from Llama Stack model: ${modelId}`);
+      
+      const stackMessages = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      yield* this.llamaStackService.streamMessage(stackMessages, modelId, options);
+    } catch (error) {
+      console.error('🚨 Llama Stack streaming error:', error);
+      yield 'Sorry, I encountered an error with the Llama 4 model. Please try again.';
     }
   }
 
