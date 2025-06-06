@@ -73,8 +73,18 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 
                   {/* Template content */}
                   <div className="text-center mb-3">
-                    <div className="text-4xl mb-2">{template.icon}</div>
-                    <h3 className="font-semibold text-gray-900">{template.name}</h3>
+                    <div className="mb-2">
+                {template.icon.startsWith('http') ? (
+                  <img 
+                    src={template.icon} 
+                    alt={template.persona}
+                    className="w-16 h-16 rounded-full border-2 border-gray-200 object-cover mx-auto"
+                  />
+                ) : (
+                  <div className="text-4xl">{template.icon}</div>
+                )}
+              </div>
+                    <h3 className="font-semibold text-gray-900">{template.persona}</h3>
                     <p className="text-sm text-gray-600 mt-1">{template.description}</p>
                   </div>
 

@@ -50,7 +50,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Conversations</h2>
+          
           {isMobile && (
             <button
               onClick={onCloseSidebar}
@@ -164,8 +164,11 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200">
-        <div className="text-xs text-gray-500 text-center">
-          AI Conversation Hub
+        <div className="flex items-center justify-center space-x-2">
+          <img src={`${process.env.PUBLIC_URL}/site-logo.png`} alt="Beta Land @ ASU" className="w-11" />
+          <div className="text-xs text-gray-500">
+            Beta Land @ ASU
+          </div>
         </div>
       </div>
     </div>

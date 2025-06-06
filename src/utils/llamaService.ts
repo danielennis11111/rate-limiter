@@ -11,17 +11,7 @@ interface LlamaResponse {
   model: string;
 }
 
-// Ollama API interfaces
-interface OllamaRequest {
-  model: string;
-  prompt: string;
-  options: {
-    temperature: number;
-    top_p: number;
-    num_predict: number;
-  };
-  stream: boolean;
-}
+// Ollama API interfaces - removed unused OllamaRequest interface
 
 export class LlamaService {
   private baseUrl: string;
@@ -71,6 +61,21 @@ export class LlamaService {
       
       if (options.systemPrompt || options.ragContext) {
         let systemContent = options.systemPrompt || 'You are a helpful AI assistant.';
+        
+        // Add markdown formatting instructions to all AI responses
+        systemContent += `\n\n## 📝 Response Formatting Guidelines
+
+**ALWAYS format your responses using proper markdown:**
+- Use **bold text** for emphasis and key points
+- Use ## headings for main sections  
+- Use ### subheadings for subsections
+- Use numbered lists (1. 2. 3.) for step-by-step instructions
+- Use bullet points (•) for feature lists and examples
+- Use \`code formatting\` for technical terms and commands
+- Use > blockquotes for important callouts
+- Add line breaks between sections for readability
+
+Make your responses visually appealing and easy to scan with proper formatting.`;
         
         if (options.ragContext) {
           systemContent += `\n\nUse the following context from the user's documents to provide relevant insights:\n\n${options.ragContext}\n\nBased on this context and your training, provide helpful, actionable advice.`;

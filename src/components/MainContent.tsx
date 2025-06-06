@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Menu, ArrowUp } from 'lucide-react';
 import { Message, ContextWindowInfo, ModelInfo, RateLimitInfo, PDFDocument } from '../types';
 import { ContextLimitWarning } from './ContextLimitWarning';
-import { TokenUsagePreview } from './TokenUsagePreview';
+import TokenUsagePreview from './TokenUsagePreview';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { RAGControls } from './RAGControls';
 import { LlamaServerStatus } from './LlamaServerStatus';
@@ -244,20 +244,7 @@ export const MainContent: React.FC<MainContentProps> = ({
             />
           </div>
 
-          {/* Token Usage Preview */}
-          <div className="mb-4">
-            <TokenUsagePreview
-              inputText={inputValue}
-              contextInfo={contextInfo}
-              knowledgeBaseEnabled={ragEnabled}
-              onCompress={onToggleOptimization}
-              compressionEnabled={optimizationActive}
-              availableModels={availableModels}
-              onSwitchModel={onSwitchModel}
-              ragTokenCount={uploadedPDFs.reduce((sum, pdf) => sum + pdf.tokenCount, 0)}
-              ragDocumentCount={uploadedPDFs.length}
-            />
-          </div>
+          {/* Token Usage Preview moved to ConversationView.tsx */}
 
           {/* Rate Limit Indicator */}
           {showRateLimit && (

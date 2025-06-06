@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AIModel } from '../types/index';
 import { LlamaService } from '../utils/llamaService';
 
@@ -10,31 +10,26 @@ interface ModelStatusBarProps {
 const ModelStatusBar: React.FC<ModelStatusBarProps> = ({ models, onRefresh }) => {
   const [llamaService] = useState(() => new LlamaService());
   const [ollamaStatus, setOllamaStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [lastChecked, setLastChecked] = useState<Date>(new Date());
 
-  useEffect(() => {
-    checkOllamaStatus();
-    // Check every 30 seconds
-    const interval = setInterval(checkOllamaStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const checkOllamaStatus = async () => {
+  const checkOllamaStatus = useCallback(async () => {
     setOllamaStatus('checking');
     try {
       const isRunning = await llamaService.isServerRunning();
       setOllamaStatus(isRunning ? 'online' : 'offline');
-      setLastChecked(new Date());
       
-      // Trigger model refresh if provided
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
       setOllamaStatus('offline');
-      setLastChecked(new Date());
     }
-  };
+  }, [llamaService, onRefresh]);
+
+  useEffect(() => {
+    checkOllamaStatus();
+    const interval = setInterval(checkOllamaStatus, 30000);
+    return () => clearInterval(interval);
+  }, [checkOllamaStatus]);
 
   const getStatusColor = (status: AIModel['status']) => {
     switch (status) {

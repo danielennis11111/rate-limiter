@@ -127,9 +127,7 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
             
             {activeConversation && (
               <div className="flex items-center space-x-2">
-                <span className="text-2xl">
-                  {templates.find(t => t.id === activeConversation.templateId)?.icon}
-                </span>
+                
                 <h1 className="text-lg font-semibold text-gray-900">
                   {activeConversation.title}
                 </h1>
@@ -156,7 +154,10 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-2xl mx-auto p-8">
-                <div className="text-6xl mb-6">🚀</div>
+                <div className="flex items-center justify-center mb-6">
+                 
+                  <div className="text-6xl">🚀</div>
+                </div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">
                   Welcome to Beta Land @ ASU
                 </h2>

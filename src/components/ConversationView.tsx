@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Conversation, ConversationTemplate, Message } from '../types/index';
 import { ConversationManager } from '../services/ConversationManager';
 import { ModelManager } from '../services/ModelManager';
-import { LlamaService } from '../utils/llamaService';
 import { PDFProcessor } from '../utils/pdfProcessor';
-import { ContextOptimizationManager } from '../utils/contextOptimizationManager';
+import AIServiceRouter from '../services/AIServiceRouter';
 import { estimateTokenCount } from '../utils/mockData';
+import TokenUsagePreview from './TokenUsagePreview';
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -54,9 +56,8 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const llamaService = new LlamaService();
-  const pdfProcessor = new PDFProcessor();
-  const contextManager = new ContextOptimizationManager();
+  const aiService = new AIServiceRouter();
+  // const pdfProcessor = new PDFProcessor(); // Currently unused
   
   // Voice recognition setup
   const recognition = useRef<SpeechRecognition | null>(null);
@@ -149,46 +150,81 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     }
   };
 
-  const speakText = (text: string) => {
-    if (synthesis.current && text) {
-      // Cancel any ongoing speech
-      synthesis.current.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 0.8;
-      
-      // Find a female voice
-      const voices = synthesis.current.getVoices();
-      const femaleVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('female') || 
-        voice.name.toLowerCase().includes('samantha') ||
-        voice.name.toLowerCase().includes('alex')
+  const speakText = (text: string, isAIResponse: boolean = false) => {
+    // ONLY speak AI responses, not user input
+    if (!synthesis.current || !text || !isAIResponse) return;
+
+    // Cancel any ongoing speech
+    synthesis.current.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Enhanced settings for more natural, human-like voice
+    utterance.rate = 0.85; // Slightly slower for clarity and naturalness
+    utterance.pitch = 1.1; // Slightly higher for friendliness
+    utterance.volume = 0.9; // Comfortable volume
+    
+    // Advanced voice selection for maximum realism
+    const voices = synthesis.current.getVoices();
+    
+    // Priority list of most natural-sounding voices
+    const preferredVoices = [
+      // macOS high-quality voices
+      'Samantha', 'Alex', 'Victoria', 'Allison', 'Ava', 'Susan', 'Fiona',
+      // Windows/Edge natural voices
+      'Microsoft Zira', 'Microsoft Hazel', 'Microsoft Eva',
+      // Google Chrome enhanced voices
+      'Google UK English Female', 'Google US English',
+      // iOS Safari voices
+      'native'
+    ];
+    
+    let selectedVoice = null;
+    
+    // Find the best available voice in priority order
+    for (const preferred of preferredVoices) {
+      selectedVoice = voices.find(voice => 
+        voice.name.includes(preferred) && 
+        (voice.lang.startsWith('en-') || voice.lang === 'en') &&
+        !voice.name.toLowerCase().includes('espeak') // Avoid robotic voices
       );
-      
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
-      }
-      
-      utterance.onstart = () => {
-        setVoiceStatus(prev => ({ ...prev, isSpeaking: true }));
-      };
-      
-      utterance.onend = () => {
-        setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
-      };
-      
-      utterance.onerror = () => {
-        setVoiceStatus(prev => ({ 
-          ...prev, 
-          isSpeaking: false, 
-          error: 'Speech synthesis error' 
-        }));
-      };
-      
-      synthesis.current.speak(utterance);
+      if (selectedVoice) break;
     }
+    
+    // Fallback to any quality English voice
+    if (!selectedVoice) {
+      selectedVoice = voices.find(voice => 
+        voice.lang.startsWith('en-') && 
+        voice.localService && // Prefer local over network voices for quality
+        !voice.name.toLowerCase().includes('espeak')
+      ) || voices.find(voice => 
+        (voice.lang.startsWith('en-') || voice.lang === 'en') &&
+        !voice.name.toLowerCase().includes('espeak')
+      );
+    }
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      console.log(`🎤 I'm using voice: ${selectedVoice.name} (${selectedVoice.lang}) for natural speech`);
+    }
+
+    utterance.onstart = () => {
+      setVoiceStatus(prev => ({ ...prev, isSpeaking: true }));
+    };
+    
+    utterance.onend = () => {
+      setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
+    };
+    
+    utterance.onerror = () => {
+      setVoiceStatus(prev => ({ 
+        ...prev, 
+        isSpeaking: false, 
+        error: 'Speech synthesis error' 
+      }));
+    };
+    
+    synthesis.current.speak(utterance);
   };
 
   const stopSpeaking = () => {
@@ -228,7 +264,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       llamaMessages.push({ role: 'user', content: input.trim() });
 
       // Call AI service
-      const response = await llamaService.sendMessage(
+      const response = await aiService.sendMessage(
         llamaMessages,
         template.modelId,
         {
@@ -251,9 +287,9 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
       conversationManager.addMessage(conversation.id, assistantMessage);
       
-      // Auto-speak response if voice is enabled
+      // Auto-speak AI response if voice is enabled (NOT user input)
       if (isVoiceEnabled && !voiceStatus.isSpeaking) {
-        speakText(response.content);
+        speakText(response.content, true); // true = this is an AI response
       }
       
       onConversationUpdate();
@@ -313,11 +349,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
   const handleQuestionClick = (question: string) => {
     setInput(question);
-    
-    // Auto-speak the question if voice is enabled
-    if (isVoiceEnabled && !voiceStatus.isSpeaking) {
-      speakText(question);
-    }
+    // Removed auto-speak for user questions - only AI responses should be spoken
   };
 
   const formatTime = (date: Date) => {
@@ -330,9 +362,17 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <span className="text-2xl">{template.icon}</span>
+            {template.icon.startsWith('http') ? (
+              <img 
+                src={template.icon} 
+                alt={template.persona}
+                className="w-10 h-10 rounded-full border-2 border-gray-200 object-cover"
+              />
+            ) : (
+              <span className="text-2xl">{template.icon}</span>
+            )}
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{template.name}</h2>
+              <h2 className="text-xl font-semibold text-gray-900">{template.persona}</h2>
               <p className="text-sm text-gray-600">{template.description}</p>
             </div>
           </div>
@@ -447,10 +487,18 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         {conversation.messages.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-gray-400 mb-4">
-              <span className="text-4xl">{template.icon}</span>
+              {template.icon.startsWith('http') ? (
+                <img 
+                  src={template.icon} 
+                  alt={template.persona}
+                  className="w-20 h-20 rounded-full border-2 border-gray-200 object-cover mx-auto"
+                />
+              ) : (
+                <span className="text-4xl">{template.icon}</span>
+              )}
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Welcome to {template.name}
+              Welcome to {template.persona}
             </h3>
             <p className="text-gray-600 mb-6">{template.description}</p>
             
@@ -482,7 +530,26 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                <div className="whitespace-pre-wrap">{message.content}</div>
+                {message.role === 'assistant' ? (
+                  <div className="prose prose-sm max-w-none text-gray-900
+                    prose-headings:text-gray-900 prose-headings:font-semibold
+                    prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
+                    prose-p:text-gray-900 prose-p:leading-relaxed
+                    prose-strong:text-gray-900 prose-strong:font-semibold
+                    prose-em:text-gray-700
+                    prose-ul:text-gray-900 prose-ol:text-gray-900
+                    prose-li:text-gray-900 prose-li:marker:text-gray-500
+                    prose-code:text-blue-700 prose-code:bg-blue-50 prose-code:px-1 prose-code:rounded
+                    prose-pre:bg-gray-50 prose-pre:text-gray-800
+                    prose-blockquote:text-gray-700 prose-blockquote:border-l-gray-300
+                    prose-hr:border-gray-200">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                )}
                 <div className={`text-xs mt-1 ${
                   message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
                 }`}>
@@ -493,7 +560,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                 
                 {message.role === 'assistant' && isVoiceEnabled && (
                   <button
-                    onClick={() => speakText(message.content)}
+                    onClick={() => speakText(message.content, true)} // true = AI response
                     disabled={voiceStatus.isSpeaking}
                     className="mt-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
                     title="Speak this response"
@@ -518,6 +585,15 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         )}
         
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* Token Usage Preview */}
+      <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
+        <TokenUsagePreview
+          conversation={conversation}
+          template={template}
+          currentInput={input}
+        />
       </div>
 
       {/* Input */}

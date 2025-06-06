@@ -11,6 +11,7 @@ export interface AIModel {
 export interface ConversationTemplate {
   id: string;
   name: string;
+  persona: string;
   description: string;
   modelId: string;
   systemPrompt: string;
@@ -47,6 +48,30 @@ export interface ConversationTemplate {
     scientificRigor?: boolean;
     professionalVision?: boolean;
     scientificImaging?: boolean;
+    thinkingMode?: boolean;
+    hybridReasoning?: boolean;
+    worldKnowledge?: boolean;
+    codeExecution?: boolean;
+    supportedFormats?: string[];
+    imageGeneration?: boolean;
+    imageEditing?: boolean;
+    realTimeStreaming?: boolean;
+    liveAPI?: boolean;
+    nextGenFeatures?: boolean;
+    highFrequency?: boolean;
+    costEfficient?: boolean;
+    fastProcessing?: boolean;
+    educationalOptimized?: boolean;
+    bulkProcessing?: boolean;
+    googleSearchGrounding?: boolean;
+    realTimeInformation?: boolean;
+    sourceCitation?: boolean;
+    factChecking?: boolean;
+    currentResearch?: boolean;
+    multiLanguageSupport?: boolean;
+    iterativeDevelopment?: boolean;
+    dataAnalysis?: boolean;
+    algorithmTesting?: boolean;
   };
 }
 
@@ -75,4 +100,109 @@ export interface ModelStatus {
   lastChecked: Date;
   responseTime?: number;
   error?: string;
+}
+
+export interface UserPreferences {
+  id: string;
+  userId?: string; // For future user accounts
+  
+  // Response Style Preferences
+  responseStyle: 'verbose' | 'direct' | 'adaptive';
+  showThoughtProcess: boolean;
+  preferredLanguage: string;
+  
+  // Learning Preferences
+  learningMode: 'guided' | 'exploratory' | 'challenge';
+  difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
+  feedbackStyle: 'encouraging' | 'detailed' | 'minimal';
+  
+  // Model Preferences
+  defaultModel: string;
+  preferredTemperature: number;
+  maxTokens: number;
+  
+  // UI Preferences
+  theme: 'light' | 'dark' | 'auto';
+  fontSize: 'small' | 'medium' | 'large';
+  compactMode: boolean;
+  
+  // Educational Settings
+  enableProgressTracking: boolean;
+  studyGoals: string[];
+  subjectAreas: string[];
+  
+  // Accessibility
+  highContrast: boolean;
+  reducedMotion: boolean;
+  
+  // Privacy & Data
+  saveConversationHistory: boolean;
+  enableAnalytics: boolean;
+  
+  lastUpdated: Date;
+  createdAt: Date;
+}
+
+export interface LearningProgress {
+  id: string;
+  userId: string;
+  
+  // Subject Progress
+  subjectAreas: {
+    [subject: string]: {
+      level: number; // 0-100
+      conceptsMastered: string[];
+      areasNeedingWork: string[];
+      lastActivity: Date;
+      timeSpent: number; // minutes
+    };
+  };
+  
+  // Language Learning Progress
+  languages: {
+    [language: string]: {
+      proficiencyLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+      vocabularyCount: number;
+      grammarConcepts: string[];
+      conversationHours: number;
+      lastPractice: Date;
+    };
+  };
+  
+  // General Learning Metrics
+  totalInteractions: number;
+  streakDays: number;
+  achievementsUnlocked: string[];
+  
+  lastUpdated: Date;
+}
+
+export interface ConfigurationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'academic' | 'creative' | 'technical' | 'language' | 'research';
+  
+  // Template Settings
+  preferredModels: string[];
+  systemPromptOverride?: string;
+  defaultParameters: {
+    temperature: number;
+    maxTokens: number;
+    topP: number;
+  };
+  
+  // Behavioral Configuration
+  responseStyle: 'verbose' | 'direct';
+  showReasoningProcess: boolean;
+  adaptiveDifficulty: boolean;
+  
+  // Subject-Specific Settings
+  subjectFocus?: string;
+  vocabularyLevel?: 'basic' | 'intermediate' | 'advanced' | 'expert';
+  includeCulturalContext?: boolean;
+  
+  isCustom: boolean;
+  createdBy?: string;
+  createdAt: Date;
 } 
