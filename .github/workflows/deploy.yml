@@ -2,9 +2,12 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
@@ -31,6 +34,9 @@ jobs:
         REACT_APP_ENABLE_CODE_EXECUTION: false
         REACT_APP_ENABLE_SEARCH_GROUNDING: false
       run: npm run build
+      
+    - name: List build output
+      run: ls -la build/
       
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
