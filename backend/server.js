@@ -72,6 +72,11 @@ app.post('/api/chat/completions', async (req, res) => {
         },
         finish_reason: 'stop'
       }],
+      usage: {
+        prompt_tokens: Math.ceil(userMessage.length / 4), // Rough estimate: 4 chars per token
+        completion_tokens: Math.ceil(response.length / 4),
+        total_tokens: Math.ceil((userMessage.length + response.length) / 4)
+      },
       model: 'llama4-scout-advanced'
     });
     

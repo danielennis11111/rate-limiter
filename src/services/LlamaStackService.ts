@@ -118,11 +118,11 @@ export class LlamaStackService {
       return {
         content: data.choices[0].message.content,
         usage: {
-          prompt_tokens: data.usage.prompt_tokens,
-          completion_tokens: data.usage.completion_tokens,
-          total_tokens: data.usage.total_tokens
+          prompt_tokens: data.usage?.prompt_tokens || 0,
+          completion_tokens: data.usage?.completion_tokens || 0,
+          total_tokens: data.usage?.total_tokens || 0
         },
-        model: data.model
+        model: data.model || modelId
       };
 
     } catch (error) {
