@@ -1,14 +1,13 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ConversationHub from './components/ConversationHub';
 
 function App() {
   return (
-    <Router>
+    <Router basename={process.env.NODE_ENV === 'production' ? '/rate-limiter' : ''}>
       <div className="App">
         <Routes>
-                  <Route path="/beta-land" element={<ConversationHub />} />
-        <Route path="/" element={<Navigate to="/beta-land" replace />} />
+          <Route path="/" element={<ConversationHub />} />
         </Routes>
       </div>
     </Router>
