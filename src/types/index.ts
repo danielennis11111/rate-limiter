@@ -89,22 +89,47 @@ export interface Conversation {
 
 export interface Citation {
   id: string;
-  type: 'web' | 'document' | 'pdf';
-  title: string;
+  source: string;
+  type: 'rag' | 'knowledge' | 'external' | 'document' | 'web' | 'pdf';
+  content: string;
+  relevance: number;
   url?: string;
+  page?: number;
+  timestamp?: Date;
   documentId?: string;
+  incantationUsed?: string;
+  highlightedText?: string;
+  confidence?: number;
+  quality?: number;
+  // Additional properties for CitationTooltip
+  title?: string;
+  excerpt?: string;
   documentName?: string;
   pageNumber?: number;
-  excerpt: string;
   relevanceScore?: number;
-  timestamp: Date;
 }
 
 export interface CitationReference {
   citationId: string;
-  startIndex: number;
-  endIndex: number;
+  inlineText: string;
+  position: number;
+  highlightStart?: number;
+  highlightEnd?: number;
+}
+
+export interface HighlightedText {
   text: string;
+  isHighlighted: boolean;
+  citationId?: string;
+}
+
+export interface RAGDiscovery {
+  query: string;
+  incantationUsed: string;
+  timestamp: Date;
+  results: Citation[];
+  confidence: number;
+  context: string;
 }
 
 export interface Message {

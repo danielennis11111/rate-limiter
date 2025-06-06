@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import LocalTTSService from '../services/LocalTTSService';
 import { getUnifiedTTS } from '../services/UnifiedTTSService';
 
@@ -7,7 +7,7 @@ interface Project {
   name: string;
   description: string;
   type: 'tts' | 'llm' | 'vision' | 'avatar' | 'custom';
-  status: 'planning' | 'setup' | 'running' | 'completed';
+  status: 'setup' | 'running' | 'completed';
   components: ProjectComponent[];
   currentPath: string;
 }
@@ -129,13 +129,13 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
     // Simulate AI analysis of the project idea
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Generate project plan based on idea
+    // Generate project setup based on idea
     const analyzedProject: Project = {
       id: Date.now().toString(),
       name: `Custom Project: ${projectIdea.substring(0, 30)}...`,
       description: projectIdea,
       type: 'custom',
-      status: 'planning',
+      status: 'setup',
       currentPath: currentWorkingDirectory,
       components: [
         {
@@ -167,7 +167,7 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
     try {
       const unifiedTTS = getUnifiedTTS();
       await unifiedTTS.speakUserFeedback(
-        `Great idea! I've analyzed your project and created a setup plan. You can review the commands and approve them when ready.`
+        `Great idea! I've analyzed your project and created a setup. You can review the commands and approve them when ready.`
       );
     } catch (error) {
       console.warn('Voice feedback failed:', error);
@@ -191,7 +191,6 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
   };
 
   const approveCommand = async (command: Command) => {
-    const updatedCommand = { ...command, status: 'approved' as const };
     setPendingCommands(prev => prev.filter(c => c.id !== command.id));
     
     // Add to terminal output
@@ -217,7 +216,7 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
     });
   };
 
-  const getAllPendingCommands = () => {
+  const getAllPendingCommands = useCallback(() => {
     if (!activeProject) return [];
     
     const commands: Command[] = [];
@@ -229,11 +228,11 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
       });
     });
     return commands;
-  };
+  }, [activeProject]);
 
   useEffect(() => {
     setPendingCommands(getAllPendingCommands());
-  }, [activeProject]);
+  }, [activeProject, getAllPendingCommands]);
 
   const PathDisplay: React.FC<{ path: string }> = ({ path }) => (
     <div className="bg-gray-800 text-green-400 p-2 rounded font-mono text-sm">
@@ -249,7 +248,7 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
           🛠️ Local Environment Builder
         </h1>
         <p className="text-gray-600">
-          Plan, setup, and manage local AI extensions without technical complexity
+          Setup and manage local AI extensions without technical complexity
         </p>
         <PathDisplay path={currentWorkingDirectory} />
       </div>
@@ -269,7 +268,7 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
             disabled={isAnalyzing || !projectIdea.trim()}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isAnalyzing ? '🤖 Analyzing...' : '🔍 Analyze & Plan'}
+            {isAnalyzing ? '🤖 Analyzing...' : '🔍 Analyze & Setup'}
           </button>
         </div>
       </div>

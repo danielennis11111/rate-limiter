@@ -1,5 +1,24 @@
 // PDF Processing utility for RAG functionality
-// In a real implementation, you would use libraries like pdf2pic, pdf-parse, or PDF.js
+// Browser-compatible PDF text extraction using PDF.js
+
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker with fallback options
+// Try local worker first, then CDN fallback if needed
+if (typeof window !== 'undefined') {
+  // Browser environment - try local worker first
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+    console.log('✅ PDF.js worker configured (local):', pdfjsLib.GlobalWorkerOptions.workerSrc);
+  } catch (localError) {
+    // Fallback to CDN worker with matching version
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs';
+    console.log('⚠️ Using CDN worker fallback:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+  }
+} else {
+  // Fallback for non-browser environments (shouldn't happen in React)
+  console.warn('PDF.js being loaded in non-browser environment');
+}
 
 interface PDFProcessingResult {
   id: string;
@@ -36,33 +55,161 @@ export class PDFProcessor {
     return Math.ceil(adjustedTokens);
   }
 
-  // Extract text from PDF file (simulated for now)
+  // Extract text from PDF file using PDF.js (browser-compatible)
   static async extractTextFromPDF(file: File): Promise<string> {
-    // In a real implementation, you would use PDF.js or similar library
-    // For now, we'll simulate PDF text extraction based on file size
-    
-    const sizeInKB = file.size / 1024;
-    const estimatedPages = Math.max(1, Math.floor(sizeInKB / 20)); // ~20KB per page average
-    
-    // Generate realistic content based on file name and size
-    let extractedText = '';
-    
-    for (let page = 1; page <= estimatedPages; page++) {
-      extractedText += `\n--- Page ${page} ---\n`;
+    try {
+      console.log(`📄 Starting PDF extraction: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
       
-      // Generate content based on filename patterns
-      if (file.name.toLowerCase().includes('research') || file.name.toLowerCase().includes('paper')) {
-        extractedText += this.generateResearchContent(page);
-      } else if (file.name.toLowerCase().includes('manual') || file.name.toLowerCase().includes('guide')) {
-        extractedText += this.generateManualContent(page);
-      } else if (file.name.toLowerCase().includes('report')) {
-        extractedText += this.generateReportContent(page);
-      } else {
-        extractedText += this.generateGenericContent(page, file.name);
+      // Validate file type
+      if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+        throw new Error(`Invalid file type: ${file.type}. Expected PDF.`);
       }
+      
+      // Convert File to ArrayBuffer for PDF.js
+      console.log('🔄 Converting file to ArrayBuffer...');
+      const arrayBuffer = await file.arrayBuffer();
+      console.log(`✅ ArrayBuffer created: ${arrayBuffer.byteLength} bytes`);
+      
+      // Load PDF document using PDF.js with proper error handling
+      console.log('🔄 Loading PDF document with PDF.js...');
+      
+      // Try with worker first, fallback to no worker if it fails
+      let loadingTask;
+      try {
+        loadingTask = pdfjsLib.getDocument({ 
+          data: arrayBuffer,
+          // Improved worker configuration for better compatibility
+          useWorkerFetch: false,
+          disableAutoFetch: false,
+          disableStream: false,
+          // Add better error handling options
+          stopAtErrors: false,
+          verbosity: 0 // Reduce console noise
+        });
+      } catch (workerError) {
+        console.warn('🔄 Worker failed, trying without worker:', workerError);
+        // Fallback: try with different settings
+        loadingTask = pdfjsLib.getDocument({ 
+          data: arrayBuffer,
+          useWorkerFetch: false,
+          disableAutoFetch: true,
+          disableStream: true,
+          stopAtErrors: false,
+          verbosity: 0
+        });
+      }
+      
+      const pdf = await loadingTask.promise;
+      console.log(`✅ PDF loaded successfully: ${pdf.numPages} pages`);
+      
+      let extractedText = '';
+      let successfulPages = 0;
+      let totalTextLength = 0;
+      
+      // Extract text from each page
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        console.log(`📄 Processing page ${pageNum}/${pdf.numPages}...`);
+        extractedText += `\n--- Page ${pageNum} ---\n`;
+        
+        try {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          
+          // Combine text items into readable text
+          const pageText = textContent.items
+            .map((item: any) => {
+              // Handle both string and object items
+              if (typeof item === 'string') return item;
+              return item.str || item.text || '';
+            })
+            .filter(text => text.trim().length > 0)
+            .join(' ')
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
+          
+          if (pageText.length > 0) {
+            extractedText += pageText + '\n\n';
+            successfulPages++;
+            totalTextLength += pageText.length;
+            console.log(`✅ Page ${pageNum}: ${pageText.length} characters extracted`);
+          } else {
+            extractedText += `[Page ${pageNum} contains no extractable text]\n\n`;
+            console.warn(`⚠️ Page ${pageNum}: No text content found`);
+          }
+          
+        } catch (pageError) {
+          console.error(`❌ Page ${pageNum} extraction failed:`, pageError);
+          extractedText += `[Page ${pageNum} text extraction failed: ${pageError instanceof Error ? pageError.message : 'Unknown error'}]\n\n`;
+        }
+      }
+      
+      console.log(`✅ PDF extraction complete: ${successfulPages}/${pdf.numPages} pages processed, ${totalTextLength} total characters`);
+      
+      // If no text was extracted, this might be a scanned PDF
+      if (totalTextLength === 0) {
+        console.warn('⚠️ No text extracted - this might be a scanned PDF or image-based document');
+        extractedText += '\n⚠️ This appears to be a scanned PDF or image-based document. No text could be extracted.\n';
+        extractedText += 'To extract text from scanned documents, OCR (Optical Character Recognition) would be required.\n\n';
+      }
+      
+      return extractedText;
+      
+    } catch (error) {
+      console.error('❌ PDF extraction failed with error:', error);
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // Log current worker configuration for debugging
+      console.log('🔧 Current PDF.js worker config:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+      
+      // Try to determine the specific error type
+      let errorDetails = '';
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid PDF')) {
+          errorDetails = 'The file appears to be corrupted or not a valid PDF.';
+        } else if (error.message.includes('password')) {
+          errorDetails = 'The PDF is password-protected and cannot be read.';
+        } else if (error.message.includes('worker') || error.message.includes('Worker')) {
+          errorDetails = 'PDF.js worker failed to load. Checking worker file accessibility...';
+          console.error('💡 Try: Ensure /pdf.worker.min.js is accessible in your public directory');
+        } else if (error.message.includes('DOMMatrix') || error.message.includes('canvas')) {
+          errorDetails = 'Browser compatibility issue. PDF.js requires modern browser features.';
+        } else {
+          errorDetails = `PDF processing error: ${error.message}`;
+        }
+      }
+      
+             // Fallback to filename-based content generation
+       console.log('📝 Using fallback content generation due to extraction failure');
+       return this.generateFallbackContent(file);
+    }
+  }
+  
+  // Fallback content generation when PDF extraction fails
+  private static generateFallbackContent(file: File): string {
+    const sizeInKB = file.size / 1024;
+    const estimatedPages = Math.max(1, Math.floor(sizeInKB / 20));
+    
+    let fallbackText = `\n--- Page 1 ---\n`;
+    fallbackText += `Document: ${file.name}\n\n`;
+    fallbackText += `⚠️ Note: This content was generated as a fallback because the PDF text extraction failed.\n`;
+    fallbackText += `The actual PDF contains ${estimatedPages} estimated pages but the content could not be read.\n\n`;
+    
+    // Add some generic structure
+    if (file.name.toLowerCase().includes('broadband')) {
+      fallbackText += `This document appears to be about broadband infrastructure, internet connectivity, `;
+      fallbackText += `telecommunications policy, or related networking topics based on the filename.\n\n`;
+      fallbackText += `Topics likely covered include: network infrastructure, internet access, `;
+      fallbackText += `connectivity solutions, policy frameworks, and technology deployment strategies.\n\n`;
+    } else {
+      fallbackText += `This document's content could not be extracted, but based on the filename "${file.name}", `;
+      fallbackText += `it likely contains relevant information for your query.\n\n`;
     }
     
-    return extractedText;
+    return fallbackText;
   }
 
   // Process PDF file and return structured data

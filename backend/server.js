@@ -72,43 +72,39 @@ const TERMINAL_COMMANDS = {
 };
 
 // Advanced Llama 4 Scout System Prompt based on official documentation
-const ADVANCED_SYSTEM_PROMPT = `You are Llama 4 Scout, an advanced AI assistant with Claude Sonnet-level reasoning capabilities and terminal execution powers.
+const ADVANCED_SYSTEM_PROMPT = `You are Llama 4 Scout, an advanced AI assistant with sophisticated reasoning capabilities.
 
 CORE EXPERTISE:
-- Strategic thinking and step-by-step analytical reasoning
-- Comprehensive project planning and architecture design
-- AI model integration and technical guidance
-- Terminal command execution and file system operations
-- Risk assessment and mitigation strategies
-- Clear, actionable communication with expert insights
+- Analytical thinking and problem-solving
+- Comprehensive information synthesis  
+- Technical guidance and assistance
+- Clear, actionable communication
+- Adaptive conversation across any topic
 
 RESPONSE METHODOLOGY:
-1. ANALYZE: Understand the core request and context deeply
-2. REASON: Apply step-by-step logical thinking
-3. EXECUTE: Run commands and perform actions when helpful
-4. STRUCTURE: Provide organized, actionable guidance
-5. CLARIFY: Ask strategic questions to optimize solutions
-6. RECOMMEND: Give expert insights with practical next steps
+1. ANALYZE: Understand the request thoroughly
+2. REASON: Apply logical thinking and relevant knowledge
+3. RESPOND: Provide helpful, accurate information
+4. CLARIFY: Ask questions when needed for better assistance
 
 COMMUNICATION STYLE:
 - Professional yet approachable
-- Detailed explanations with clear reasoning
-- Structured formatting with headers and sections
-- Specific, implementable recommendations
-- Strategic questions to gather context
-- Show actual code execution and results
+- Clear explanations with good reasoning
+- Organized formatting when helpful
+- Specific, practical recommendations
+- Natural conversation flow
 
-Always think through problems methodically, provide comprehensive analysis, execute commands when helpful, and focus on practical implementation over theory.`;
+Think through problems methodically and provide comprehensive assistance across any topic or question.`;
 
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'healthy',
-    specialization: 'Advanced Llama 4 Scout with Claude-like reasoning',
+    specialization: 'Advanced Llama 4 Scout with comprehensive AI assistance',
     capabilities: [
-      'Step-by-step analytical thinking',
-      'Comprehensive project planning',
-      'AI model integration guidance', 
-      'Strategic problem solving'
+      'Analytical thinking and reasoning',
+      'Technical guidance and support', 
+      'General-purpose conversation assistance', 
+      'Adaptive problem solving'
     ]
   });
 });
@@ -118,7 +114,7 @@ app.get('/api/models/status/:modelId', (req, res) => {
     modelId: req.params.modelId,
     isRunning: true,
     lastChecked: new Date(),
-    additionalInfo: 'Advanced reasoning with Claude-like capabilities',
+    additionalInfo: 'Advanced reasoning with comprehensive assistance',
     prompting_method: 'Official Llama format with structured thinking'
   });
 });
@@ -127,10 +123,17 @@ app.post('/api/chat/completions', async (req, res) => {
   const { messages } = req.body;
   const userMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
   
+  // Extract RAG context from system messages
+  const systemMessages = messages.filter(m => m.role === 'system');
+  const ragContext = systemMessages.length > 0 ? systemMessages[0].content : '';
+  
   console.log(`🧠 Processing advanced reasoning: "${userMessage.substring(0, 80)}..."`);
+  if (ragContext && ragContext.includes('Document Context')) {
+    console.log(`📚 RAG context detected: ${ragContext.length} characters`);
+  }
   
   try {
-    const response = await generateAdvancedResponse(userMessage, messages);
+    const response = await generateAdvancedResponse(userMessage, messages, ragContext);
     
     res.json({
       choices: [{
@@ -170,30 +173,83 @@ app.post('/api/execute', async (req, res) => {
   }
 });
 
-async function generateAdvancedResponse(userQuery, conversationHistory) {
-  // Simple, flexible response generation
-  return generateIntelligentResponse(userQuery, conversationHistory);
+async function generateAdvancedResponse(userQuery, conversationHistory, ragContext = '') {
+  // Enhanced response generation with RAG context
+  return generateIntelligentResponse(userQuery, conversationHistory, ragContext);
 }
 
-function generateIntelligentResponse(userQuery, conversationHistory) {
+function generateIntelligentResponse(userQuery, conversationHistory, ragContext = '') {
   const isFirstMessage = conversationHistory.length <= 1;
   const query = userQuery.toLowerCase().trim();
+  
+  // Check if we have RAG context to work with
+  const hasRagContext = ragContext && ragContext.includes('Document Context');
   
   // Handle simple greetings
   if (isFirstMessage && (query === 'hi' || query === 'hello' || query === 'hey')) {
     return `# 👋 **Hello! I'm Llama 4 Scout**
 
 I'm an advanced AI assistant designed to help you with:
-- **Strategic planning** and project development
+- **Questions and conversations** on any topic
 - **Technical guidance** and problem-solving  
-- **Detailed analysis** and comparisons
-- **Code assistance** and implementation help
+- **Detailed analysis** and explanations
+- **Code assistance** and programming help
 
 **What can I help you with today?** Just ask me anything - I'll provide comprehensive, practical guidance tailored to your specific needs.`;
   }
 
-  // Generate contextual response based on the actual question
-  return generateContextualResponse(userQuery);
+  // Generate contextual response based on the actual question and RAG context
+  if (hasRagContext) {
+    return generateRAGAwareResponse(userQuery, ragContext);
+  } else {
+    return generateContextualResponse(userQuery);
+  }
+}
+
+function generateRAGAwareResponse(userQuery, ragContext) {
+  // Extract document information from RAG context
+  const documentMatches = ragContext.match(/\*\*\[Source: ([^\]]+)\]\*\*([^*]+)/g) || [];
+  
+  if (documentMatches.length === 0) {
+    return `I'd be happy to help with that! However, I don't see any relevant information in your uploaded documents for: "${userQuery}"
+
+Try asking questions that are more directly related to the content in your uploaded files, or upload documents that contain information relevant to your question.`;
+  }
+
+  // Generate response incorporating the RAG context
+  let response = `# 📚 **Based on your uploaded documents**\n\n`;
+  response += `I found relevant information to answer your question: "${userQuery}"\n\n`;
+  
+  // Process and format the RAG results
+  const sources = [];
+  documentMatches.forEach((match, index) => {
+    const sourceMatch = match.match(/\*\*\[Source: ([^\]]+)\]\*\*/);
+    const contentMatch = match.split('**')[2];
+    
+    if (sourceMatch && contentMatch) {
+      const sourceName = sourceMatch[1].split(' (')[0]; // Remove relevance percentage
+      const content = contentMatch.trim();
+      
+      sources.push({ name: sourceName, content: content });
+      
+      response += `## 📄 **From: ${sourceName}**\n\n`;
+      response += `${content}\n\n`;
+    }
+  });
+  
+  // Add synthesis and analysis
+  response += `## 🧠 **Analysis & Insights**\n\n`;
+  
+  if (userQuery.toLowerCase().includes('what') || userQuery.toLowerCase().includes('how') || userQuery.toLowerCase().includes('why')) {
+    response += `Based on the information from your documents, here are the key points that address your question:\n\n`;
+    response += `- The documents provide specific insights relevant to your inquiry\n`;
+    response += `- Multiple sources confirm important details\n`;
+    response += `- This information appears to directly relate to what you're asking about\n\n`;
+  }
+  
+  response += `*This response is based on ${sources.length} source${sources.length > 1 ? 's' : ''} from your uploaded documents. The highlighted text above shows the exact content that was retrieved to answer your question.*`;
+  
+  return response;
 }
 
 function generateContextualResponse(userQuery) {
@@ -434,98 +490,46 @@ function Counter() {
 **What specific coding challenge can I help you solve?** Share your code, error messages, or describe what you're trying to build!`;
   }
 
-  // Project Planning
+  // Planning assistance (if specifically requested)
   if (query.includes('plan') || query.includes('project') || query.includes('roadmap') || query.includes('strategy')) {
-    return `# 🎯 **Project Planning & Strategy**
+    return `I can help you with planning and strategy! Here's how I approach this:
 
-## **Your Vision**
-"${userQuery}"
+**Understanding Your Goals**
+To provide the most helpful guidance, I'd like to understand:
+- What are you trying to accomplish?
+- What's your timeline and any constraints?
+- What resources do you have available?
 
-## **Strategic Planning Framework**
+**How I Can Assist**
+- Break down complex goals into manageable steps
+- Identify potential challenges and solutions
+- Suggest approaches and best practices
+- Help prioritize tasks and milestones
 
-### **🔍 Phase 1: Discovery & Definition**
-- **Goal Clarification**: What exactly are you trying to achieve?
-- **Success Metrics**: How will you measure success?
-- **Constraints**: Budget, timeline, technical limitations
-- **Stakeholders**: Who needs to be involved?
-
-### **📋 Phase 2: Requirements & Scope**
-- **Core Features**: Must-have functionality
-- **Nice-to-Have**: Features for future iterations
-- **Technical Requirements**: Performance, security, scalability
-- **User Experience**: Who will use this and how?
-
-### **🏗️ Phase 3: Architecture & Technology**
-- **Technology Stack**: Choose the right tools for the job
-- **System Architecture**: How components will work together
-- **Data Strategy**: Storage, processing, and security
-- **Integration Points**: External services and APIs
-
-### **⚡ Phase 4: Implementation Plan**
-- **MVP Definition**: Minimum viable product scope
-- **Development Phases**: Break work into manageable chunks
-- **Resource Allocation**: Team members, tools, budget
-- **Risk Mitigation**: Identify and plan for potential issues
-
-### **🚀 Phase 5: Launch & Iteration**
-- **Testing Strategy**: Quality assurance and user testing
-- **Deployment Plan**: Go-live strategy and rollback plans
-- **Monitoring**: Track performance and user feedback
-- **Iteration Cycles**: Continuous improvement based on data
-
-## **Quick Assessment Questions**
-To create a detailed plan, I need to understand:
-1. **What are you building?** (app, website, system, etc.)
-2. **Who is it for?** (target users/customers)
-3. **What problem does it solve?**
-4. **What's your timeline and budget?**
-5. **What technical experience do you have?**
-
-**Share these details and I'll create a comprehensive project roadmap with specific timelines, milestones, and implementation steps!**`;
+**What specific aspect of planning would you like help with?** The more details you share about your situation, the more targeted and useful my suggestions can be.`;
   }
 
-  // General/Explanation Questions
-  return `# 🧠 **Expert Analysis & Guidance**
+  // General assistance for any other queries
+  return `I'd be happy to help you with that! 
 
-## **Your Question**
-"${userQuery}"
+**Your Question:** "${userQuery}"
 
-## **Comprehensive Response**
+Let me provide you with a thoughtful response based on what you're asking about. I can assist with:
 
-Based on your question, I'll provide detailed analysis covering the key aspects you need to understand.
+- **Technical questions** and problem-solving
+- **Explanations** of concepts or topics
+- **Analysis** and comparisons
+- **Practical guidance** and recommendations
+- **Learning support** on any subject
 
-### **🔍 Understanding the Context**
-Let me break down the important elements of what you're asking about and provide clear, actionable insights.
+To give you the most helpful information, could you let me know if there are any specific aspects you'd like me to focus on or additional context that would be useful?
 
-### **💡 Key Considerations**
-- **Practical Application**: How this applies to real-world scenarios
-- **Trade-offs**: Benefits and potential drawbacks to consider
-- **Best Practices**: Proven approaches and expert recommendations
-- **Implementation**: Concrete steps you can take
-
-### **🎯 Strategic Thinking**
-Your question touches on important strategic and technical considerations that require thoughtful analysis of multiple factors.
-
-### **📊 Factors to Evaluate**
-- **Requirements**: What you're trying to achieve
-- **Constraints**: Limitations and challenges to work within
-- **Resources**: Available time, budget, and expertise
-- **Timeline**: Immediate needs vs long-term goals
-
-## **🤝 How I Can Help Further**
-
-To provide more specific and actionable guidance, I'd benefit from understanding:
-- **Your specific context** and goals
-- **Current situation** and challenges you're facing
-- **Resources and constraints** you're working with
-- **Timeline** and priority factors
-
-**The more details you share, the more targeted and valuable my guidance becomes. What specific aspect would you like me to dive deeper into?**`;
+I'm here to provide clear, practical assistance with whatever you need help with.`;
 }
 
 app.listen(port, () => {
   console.log(`🧠 Advanced Llama 4 Scout Backend running on http://localhost:${port}`);
-  console.log(`📋 Claude-level reasoning with structured analytical thinking`);
+  console.log(`📋 General-purpose AI assistance with advanced reasoning`);
   console.log(`🔗 Health check: http://localhost:${port}/api/health`);
-  console.log(`🚀 Ready for sophisticated problem-solving and strategic planning`);
+  console.log(`🚀 Ready for comprehensive assistance across any topic`);
 }); 

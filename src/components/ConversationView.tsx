@@ -19,7 +19,10 @@ import ModelSwitcher from './ModelSwitcher';
 import ProgressiveThinkingIndicator from './ProgressiveThinkingIndicator';
 import CitationRenderer from './CitationRenderer';
 import InlineRAGControls from './InlineRAGControls';
-import { convertRAGResultsToCitations, filterAndRankCitations } from '../utils/citationParser';
+import HighlightedText from './HighlightedText';
+import RAGDiscoveryPanel from './RAGDiscoveryPanel';
+import { convertRAGResultsToCitations, filterAndRankCitations, createRAGDiscovery, parseTextWithHighlighting } from '../utils/citationParser';
+import { IncantationEngine } from '../services/IncantationEngine';
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -76,7 +79,16 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [pdfs, setPdfs] = useState<PDFDocument[]>([]);
+  const [pdfs, setPdfs] = useState<PDFDocument[]>(() => {
+    // Load PDFs from localStorage on component mount
+    try {
+      const stored = localStorage.getItem(`pdfs-${conversation.id}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.warn('Failed to load PDFs from localStorage:', error);
+      return [];
+    }
+  });
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
   const [ragContext, setRagContext] = useState('');
   const [ragProcessor] = useState(() => new EnhancedRAGProcessor());
@@ -96,6 +108,8 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [ragEnabled, setRagEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<string>('silky-smooth');
   const [currentCitations, setCurrentCitations] = useState<any[]>([]);
+  const [ragDiscoveries, setRagDiscoveries] = useState<any[]>([]);
+  const [incantationEngine] = useState(() => new IncantationEngine());
   
   // Persona-specific voice mapping
   const getPersonaVoice = (templateId: string, personaName: string): string => {
@@ -244,6 +258,49 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [conversation.messages]);
+
+  // Save PDFs to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(`pdfs-${conversation.id}`, JSON.stringify(pdfs));
+      console.log(`💾 Saved ${pdfs.length} PDFs to localStorage for conversation ${conversation.id}`);
+    } catch (error) {
+      console.warn('Failed to save PDFs to localStorage:', error);
+    }
+  }, [pdfs, conversation.id]);
+
+  // Load existing PDFs into RAG processor on mount
+  useEffect(() => {
+    if (pdfs.length > 0) {
+      console.log(`📄 Loading ${pdfs.length} PDFs into RAG processor`);
+      pdfs.forEach(pdf => {
+        // Re-create a simple document structure for the RAG processor
+        const simpleDoc = {
+          id: pdf.id,
+          name: pdf.name,
+          content: pdf.content,
+          size: pdf.size,
+          uploadedAt: pdf.uploadedAt,
+          tokenCount: pdf.tokenCount
+        };
+        
+        // Add to RAG processor if not already there
+        const existingDocs = ragProcessor.getDocuments();
+        if (!existingDocs.find(doc => doc.id === pdf.id)) {
+          // Convert to processFile format for consistency  
+          const fileBlob = new File([pdf.content], pdf.name, { type: 'application/pdf' });
+          ragProcessor.processFile(fileBlob).catch(error => {
+            console.warn(`Failed to re-process PDF ${pdf.name}:`, error);
+          });
+        }
+      });
+      
+      // Update RAG context
+      const combinedContext = pdfs.map(pdf => pdf.content).join('\n\n');
+      setRagContext(combinedContext);
+      console.log(`📚 RAG processor loaded with ${ragProcessor.getDocuments().length} documents`);
+    }
+  }, []); // Only run on mount
 
   useEffect(() => {
     // Rate limiting logic
@@ -556,12 +613,18 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       // Add current message
       llamaMessages.push({ role: 'user', content: originalInput });
 
-      // Intelligent RAG retrieval - only for substantial queries
+      // Intelligent RAG retrieval with incantation tracking
       let intelligentRagContext = '';
       const shouldUseRAG = ragEnabled && ragProcessor.getDocuments().length > 0 && isSubstantialQuery(originalInput);
       
       if (shouldUseRAG) {
         console.log(`🔍 RAG Search: Looking for "${originalInput}" in ${ragProcessor.getDocuments().length} documents`);
+        
+        // Determine best incantation pattern for this query
+        const recommendedPatterns = incantationEngine.recommendPatterns('document-search', originalInput);
+        const selectedIncantation = recommendedPatterns[0] || 'semantic-search';
+        
+        console.log(`🎯 Using incantation: ${selectedIncantation}`);
         
         const ragResults = ragProcessor.searchDocuments({
           query: originalInput,
@@ -575,10 +638,19 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         });
         
         if (ragResults.length > 0) {
-          // Convert RAG results to citations
-          const ragCitations = convertRAGResultsToCitations(ragResults);
+          // Convert RAG results to citations with incantation tracking
+          const ragCitations = convertRAGResultsToCitations(ragResults, selectedIncantation);
           const qualityCitations = filterAndRankCitations(ragCitations, 0.2, 5);
           setCurrentCitations(qualityCitations);
+          
+          // Create RAG discovery record
+          const discovery = createRAGDiscovery(
+            originalInput,
+            selectedIncantation,
+            qualityCitations,
+            intelligentRagContext
+          );
+          setRagDiscoveries(prev => [...prev, discovery]);
           
           intelligentRagContext = ragResults
             .map((result, index) => {
@@ -590,6 +662,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           
           console.log(`🔍 RAG Context Length: ${intelligentRagContext.length} characters`);
           console.log(`🔗 Generated ${qualityCitations.length} citations from RAG results`);
+          console.log(`🎯 Discovery recorded with incantation: ${selectedIncantation}`);
         } else {
           console.log('🔍 RAG: No relevant content found, falling back to full context if available');
         }
@@ -642,6 +715,14 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         }
 
         
+        // After streaming is complete, attach citations if we have them
+        if (fullContent.length > 0 && currentCitations.length > 0) {
+          const { segments, references } = parseTextWithHighlighting(fullContent, currentCitations);
+          assistantMessage.citations = currentCitations;
+          assistantMessage.citationReferences = references;
+          onConversationUpdate();
+        }
+
         // If no content was streamed, fall back to regular API call
         if (fullContent.length === 0) {
 
@@ -657,14 +738,18 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             }
           );
           
-          // Temporarily disable citation parsing to fix [object Object] issue
-          // const parsedContent = parseTextWithCitations(response.content);
+          // Parse text with highlighting and attach citations
+          if (currentCitations.length > 0) {
+            const { segments, references } = parseTextWithHighlighting(response.content, currentCitations);
+            assistantMessage.content = response.content;
+            assistantMessage.citations = currentCitations;
+            assistantMessage.citationReferences = references;
+          } else {
+            assistantMessage.content = response.content;
+          }
           
-          assistantMessage.content = response.content;
           assistantMessage.tokens = response.usage?.completion_tokens || 0;
           assistantMessage.modelUsed = response.model;
-          // assistantMessage.citations = parsedContent.citations;
-          // assistantMessage.citationReferences = parsedContent.citationReferences;
           setActualModelUsed(response.model);
 
           // Check for fallback and show notification
@@ -1096,25 +1181,45 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                   prose-blockquote:text-current prose-blockquote:border-l-current prose-blockquote:border-opacity-30
                   prose-hr:border-current prose-hr:border-opacity-20
                   [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p: ({ children }) => <div className="mb-2">{children}</div>,
-                      h1: ({ children }) => <h1 className="text-lg font-semibold mb-2">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-base font-semibold mb-2">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
-                      strong: ({ children }) => {
-                        // Handle citation formatting
-                        const text = String(children);
-                        if (text.startsWith('[Source:')) {
-                          return <span className="inline-block mt-2 px-2 py-1 bg-black bg-opacity-10 rounded-md text-xs font-medium border-l-2 border-current border-opacity-30">{children}</span>;
+                  {message.role === 'assistant' && message.citations && message.citations.length > 0 ? (
+                    // Enhanced rendering with highlighted citations for assistant messages
+                    <div>
+                      {(() => {
+                        const { segments } = parseTextWithHighlighting(message.content, message.citations, ragDiscoveries);
+                        return (
+                          <HighlightedText 
+                            segments={segments}
+                            citations={message.citations}
+                            discoveries={ragDiscoveries}
+                            onCitationClick={(citationId) => {
+                              console.log('Citation clicked:', citationId);
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    // Standard markdown rendering for messages without citations
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <div className="mb-2">{children}</div>,
+                        h1: ({ children }) => <h1 className="text-lg font-semibold mb-2">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-base font-semibold mb-2">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
+                        strong: ({ children }) => {
+                          // Handle citation formatting
+                          const text = String(children);
+                          if (text.startsWith('[Source:')) {
+                            return <span className="inline-block mt-2 px-2 py-1 bg-black bg-opacity-10 rounded-md text-xs font-medium border-l-2 border-current border-opacity-30">{children}</span>;
+                          }
+                          return <strong>{children}</strong>;
                         }
-                        return <strong>{children}</strong>;
-                      }
-                    }}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  )}
                 </div>
                 <div className={`text-xs mt-1 ${
                   message.role === 'user' ? 'text-gray-700' : 'text-gray-500'
@@ -1136,12 +1241,27 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                 )}
                 
                 {/* Show citations for assistant messages if available */}
-                {message.role === 'assistant' && currentCitations.length > 0 && (
+                {message.role === 'assistant' && message.citations && message.citations.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <CitationRenderer 
-                      citations={currentCitations}
+                      citations={message.citations}
                       showRelevanceScores={true}
                       maxPreviewLength={150}
+                      className="max-w-none"
+                    />
+                  </div>
+                )}
+                
+                {/* Show discovery panel for the most recent assistant message with discoveries */}
+                {message.role === 'assistant' && 
+                 conversation.messages[conversation.messages.length - 1]?.id === message.id && 
+                 ragDiscoveries.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-purple-200">
+                    <RAGDiscoveryPanel 
+                      discoveries={ragDiscoveries}
+                      onDiscoveryClick={(discovery) => {
+                        console.log('Discovery clicked:', discovery);
+                      }}
                       className="max-w-none"
                     />
                   </div>

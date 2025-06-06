@@ -1,11 +1,11 @@
 /**
- * 🔍 Citation Parser - Extract and Format RAG Citations
+ * 🔗 Citation Parser - Enhanced RAG Citation Processing
  * 
- * Parses RAG search results and converts them into proper citation objects
- * for display in the CitationRenderer component.
+ * Converts RAG results into structured citations with incantation tracking
+ * and text highlighting for interactive source attribution.
  */
 
-import { Citation, CitationReference } from '../components/CitationRenderer';
+import { Citation, CitationReference, HighlightedText, RAGDiscovery } from '../types/index';
 
 // Interface for RAG search results (matches your existing EnhancedRAG structure)
 export interface RAGResult {
@@ -13,6 +13,7 @@ export interface RAGResult {
     content: string;
     startIndex: number;
     endIndex: number;
+    type?: string;
   };
   document: {
     id: string;
@@ -25,76 +26,202 @@ export interface RAGResult {
 }
 
 /**
- * Convert RAG search results to Citation objects
+ * Convert RAG results to structured citations with incantation tracking
  */
-export function convertRAGResultsToCitations(ragResults: RAGResult[]): Citation[] {
+export function convertRAGResultsToCitations(
+  ragResults: RAGResult[], 
+  incantationUsed?: string
+): Citation[] {
   return ragResults.map((result, index) => ({
     id: `rag-${result.document.id}-${index}`,
     source: result.document.name,
     type: 'rag' as const,
-    content: result.chunk.content,
+    content: result.context,
     relevance: result.relevanceScore,
     timestamp: result.document.uploadedAt,
-    documentId: result.document.id
+    documentId: result.document.id,
+    incantationUsed: incantationUsed || 'semantic-search',
+    highlightedText: extractHighlightedText(result.context, result.chunk.content),
+    confidence: calculateConfidence(result.relevanceScore, result.context.length),
+    quality: calculateCitationQuality({
+      id: `rag-${result.document.id}-${index}`,
+      source: result.document.name,
+      type: 'rag',
+      content: result.context,
+      relevance: result.relevanceScore
+    })
   }));
 }
 
 /**
- * Parse text content to find inline citation markers
- * Looks for patterns like [1], [Source: Document], etc.
+ * Extract the most relevant text snippet for highlighting
+ */
+function extractHighlightedText(fullContext: string, chunkContent: string): string {
+  // If chunk content is available and shorter, use it
+  if (chunkContent && chunkContent.length < 200) {
+    return chunkContent;
+  }
+  
+  // Otherwise, find the most important sentence in the context
+  const sentences = fullContext.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  if (sentences.length === 0) return fullContext.substring(0, 150);
+  
+  // Return the longest sentence (likely most informative)
+  const longestSentence = sentences.reduce((prev, current) => 
+    current.length > prev.length ? current : prev
+  );
+  
+  return longestSentence.trim();
+}
+
+/**
+ * Calculate confidence score based on relevance and content quality
+ */
+function calculateConfidence(relevanceScore: number, contentLength: number): number {
+  let confidence = relevanceScore * 0.7; // Base confidence from relevance
+  
+  // Content length factor
+  if (contentLength >= 100 && contentLength <= 500) {
+    confidence += 0.2; // Ideal length
+  } else if (contentLength >= 50) {
+    confidence += 0.1; // Acceptable length
+  }
+  
+  // Semantic quality boost (placeholder - could add NLP analysis)
+  confidence += 0.1;
+  
+  return Math.min(confidence, 1.0);
+}
+
+/**
+ * Parse text and highlight RAG-sourced content
+ */
+export function parseTextWithHighlighting(
+  text: string,
+  citations: Citation[],
+  discoveries: RAGDiscovery[] = []
+): {
+  segments: HighlightedText[];
+  references: CitationReference[];
+} {
+  const segments: HighlightedText[] = [];
+  const references: CitationReference[] = [];
+  
+  let currentIndex = 0;
+  
+  // Simple approach: look for quoted content that matches citation sources
+  // For now, implement a basic version that looks for similar text
+  // In a production system, this would use more sophisticated NLP
+  
+  for (const citation of citations) {
+    const highlightText = citation.highlightedText || citation.content.substring(0, 100);
+    const matchIndex = text.toLowerCase().indexOf(highlightText.toLowerCase().substring(0, 50));
+    
+    if (matchIndex !== -1 && matchIndex >= currentIndex) {
+      // Add non-highlighted text before this match
+      if (matchIndex > currentIndex) {
+        segments.push({
+          text: text.substring(currentIndex, matchIndex),
+          isHighlighted: false
+        });
+      }
+      
+      // Add highlighted text
+      const matchEnd = matchIndex + highlightText.length;
+      segments.push({
+        text: text.substring(matchIndex, Math.min(matchEnd, text.length)),
+        isHighlighted: true,
+        citationId: citation.id
+      });
+      
+      // Add reference
+      references.push({
+        citationId: citation.id,
+        inlineText: text.substring(matchIndex, Math.min(matchEnd, text.length)),
+        position: matchIndex,
+        highlightStart: matchIndex,
+        highlightEnd: Math.min(matchEnd, text.length)
+      });
+      
+      currentIndex = Math.min(matchEnd, text.length);
+    }
+  }
+  
+  // Add remaining text
+  if (currentIndex < text.length) {
+    segments.push({
+      text: text.substring(currentIndex),
+      isHighlighted: false
+    });
+  }
+  
+  // If no matches found, return the entire text as non-highlighted
+  if (segments.length === 0) {
+    segments.push({
+      text: text,
+      isHighlighted: false
+    });
+  }
+  
+  return { segments, references };
+}
+
+/**
+ * Create a RAG discovery record
+ */
+export function createRAGDiscovery(
+  query: string,
+  incantationUsed: string,
+  citations: Citation[],
+  context: string
+): RAGDiscovery {
+  return {
+    query,
+    incantationUsed,
+    timestamp: new Date(),
+    results: citations,
+    confidence: citations.length > 0 ? 
+      citations.reduce((sum, c) => sum + (c.confidence || 0), 0) / citations.length : 0,
+    context
+  };
+}
+
+/**
+ * Enhanced citation quality calculation
+ */
+export function calculateCitationQuality(citation: Partial<Citation>): number {
+  let score = (citation.relevance || 0) * 0.6; // 60% weight for relevance
+  
+  // Content length factor
+  const contentLength = citation.content?.length || 0;
+  let lengthScore = 0;
+  
+  if (contentLength >= 50 && contentLength <= 300) {
+    lengthScore = 1; // Ideal length
+  } else if (contentLength >= 20 && contentLength <= 500) {
+    lengthScore = 0.8; // Good length
+  } else if (contentLength >= 10) {
+    lengthScore = 0.5; // Acceptable length
+  }
+  
+  score += lengthScore * 0.2; // 20% weight for length
+  
+  // Confidence factor
+  score += (citation.confidence || 0.5) * 0.2; // 20% weight for confidence
+  
+  return Math.min(score, 1);
+}
+
+/**
+ * Legacy function for backward compatibility
  */
 export function parseTextWithCitations(text: string, citations: Citation[]): {
   cleanText: string;
   references: CitationReference[];
 } {
-  const references: CitationReference[] = [];
-  let cleanText = text;
-  
-  // Pattern to match citation markers: [1], [Source: Doc], etc.
-  const citationPattern = /\[([^\]]+)\]/g;
-  let match;
-  let offset = 0;
-  
-  while ((match = citationPattern.exec(text)) !== null) {
-    const fullMatch = match[0];
-    const citationContent = match[1];
-    const startPos = match.index - offset;
-    
-    // Try to find matching citation
-    let matchingCitation: Citation | null = null;
-    
-    // Check if it's a number reference
-    const numberMatch = citationContent.match(/^\d+$/);
-    if (numberMatch) {
-      const citationIndex = parseInt(numberMatch[0]) - 1;
-      if (citationIndex >= 0 && citationIndex < citations.length) {
-        matchingCitation = citations[citationIndex];
-      }
-         } else {
-       // Check if it matches a source name
-       matchingCitation = citations.find(c => 
-         c.source.toLowerCase().includes(citationContent.toLowerCase()) ||
-         citationContent.toLowerCase().includes(c.source.toLowerCase())
-       ) || null;
-     }
-    
-    if (matchingCitation) {
-      references.push({
-        citationId: matchingCitation.id,
-        inlineText: citationContent,
-        position: startPos
-      });
-    }
-    
-    // Remove the citation marker from clean text
-    cleanText = cleanText.slice(0, startPos) + cleanText.slice(startPos + fullMatch.length);
-    offset += fullMatch.length;
-  }
-  
-  return {
-    cleanText,
-    references
-  };
+  const { segments, references } = parseTextWithHighlighting(text, citations);
+  const cleanText = segments.map(s => s.text).join('');
+  return { cleanText, references };
 }
 
 /**
@@ -106,7 +233,6 @@ export function extractRelevantQuotes(
   maxQuoteLength: number = 150
 ): Citation[] {
   return citations.map(citation => {
-    const content = citation.content.toLowerCase();
     const terms = queryTerms.map(term => term.toLowerCase());
     
     // Find best matching excerpt
@@ -218,29 +344,6 @@ export function generateBibliography(citations: Citation[]): string {
         return `${number}. ${citation.source}. ${date}.`;
     }
   }).join('\n');
-}
-
-/**
- * Calculate citation quality score based on relevance and content length
- */
-export function calculateCitationQuality(citation: Citation): number {
-  let score = citation.relevance * 0.7; // 70% weight for relevance
-  
-  // Content length factor (prefer substantial but not overwhelming content)
-  const contentLength = citation.content.length;
-  let lengthScore = 0;
-  
-  if (contentLength >= 50 && contentLength <= 300) {
-    lengthScore = 1; // Ideal length
-  } else if (contentLength >= 20 && contentLength <= 500) {
-    lengthScore = 0.8; // Good length
-  } else if (contentLength >= 10) {
-    lengthScore = 0.5; // Acceptable length
-  }
-  
-  score += lengthScore * 0.3; // 30% weight for length appropriateness
-  
-  return Math.min(score, 1); // Cap at 1.0
 }
 
 /**

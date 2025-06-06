@@ -226,7 +226,7 @@ Ready to become a problem-solving superhuman? Share your most challenging proble
       'Complex system analysis',
       'Root cause identification',
       'Strategic solution design',
-      'Implementation roadmapping',
+      'Solution implementation',
       'Obstacle anticipation',
       'Systems optimization',
       'Innovation opportunity creation',
@@ -235,7 +235,7 @@ Ready to become a problem-solving superhuman? Share your most challenging proble
     suggestedQuestions: [
       'Solve the challenge of making higher education accessible to everyone globally',
       'Design a strategy to eliminate student debt while improving education quality',
-      'Create a plan to make ASU carbon-neutral while reducing costs',
+      'Design approaches to make ASU carbon-neutral while reducing costs',
       'Develop a solution for the future of work in an AI-driven economy',
       'Architect a system to eliminate food insecurity on college campuses'
     ],
@@ -475,7 +475,7 @@ Ready to become a future superhuman? Share your domain of interest and watch me 
       'Strategic foresight development',
       'Innovation opportunity identification',
       'System disruption prediction',
-      'Future-proofing strategy design',
+      'Future-proofing approach development',
       'Technology trajectory analysis',
       'Adaptive planning mastery'
     ],
@@ -483,7 +483,7 @@ Ready to become a future superhuman? Share your domain of interest and watch me 
       'Predict the future of higher education in an AI-driven world',
       'Design a strategy for thriving in the post-work economy',
       'Analyze the convergence of climate tech, AI, and biotechnology',
-      'Create a roadmap for sustainable cities in 2050',
+      'Explore sustainable cities concepts for 2050',
       'Predict how human creativity will evolve with AI collaboration'
     ],
     parameters: {

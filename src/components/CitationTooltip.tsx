@@ -68,18 +68,22 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-white truncate">
-                  {citation.title}
+                  {citation.title || citation.source || 'Untitled Source'}
                 </h4>
                 <div className="flex items-center space-x-2 text-xs text-gray-300 mt-1">
                   <span>{citation.type === 'web' ? 'Web' : 'Document'}</span>
-                  {citation.pageNumber && (
+                  {(citation.pageNumber || citation.page) && (
                     <>
                       <span>•</span>
-                      <span>Page {citation.pageNumber}</span>
+                      <span>Page {citation.pageNumber || citation.page}</span>
                     </>
                   )}
-                  <span>•</span>
-                  <span>{formatDate(citation.timestamp)}</span>
+                  {citation.timestamp && (
+                    <>
+                      <span>•</span>
+                      <span>{formatDate(citation.timestamp)}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -87,14 +91,14 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({
             {/* Excerpt */}
             <div className="mb-3">
               <p className="text-gray-200 text-sm leading-relaxed">
-                {citation.excerpt}
+                {citation.excerpt || citation.content || 'No preview available'}
               </p>
             </div>
 
             {/* Footer */}
             <div className="flex items-center justify-between">
               <div className="text-xs text-gray-400">
-                {citation.documentName || (citation.url && new URL(citation.url).hostname)}
+                {citation.documentName || citation.source || (citation.url && new URL(citation.url).hostname) || 'Unknown source'}
               </div>
               {citation.url && (
                 <button
@@ -108,7 +112,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({
             </div>
 
             {/* Relevance Score */}
-            {citation.relevanceScore && citation.relevanceScore > 0 && (
+            {(citation.relevanceScore || citation.relevance) && (citation.relevanceScore || citation.relevance) > 0 && (
               <div className="mt-2 pt-2 border-t border-gray-700">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">Relevance</span>
@@ -116,11 +120,11 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({
                     <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-[#FFC627] rounded-full transition-all duration-300"
-                        style={{ width: `${citation.relevanceScore * 100}%` }}
+                        style={{ width: `${(citation.relevanceScore || citation.relevance) * 100}%` }}
                       />
                     </div>
                     <span className="text-gray-300">
-                      {Math.round(citation.relevanceScore * 100)}%
+                      {Math.round((citation.relevanceScore || citation.relevance) * 100)}%
                     </span>
                   </div>
                 </div>

@@ -6,19 +6,8 @@
  */
 
 import React, { useState } from 'react';
-import { FileText, ExternalLink, ChevronDown, ChevronRight, Quote } from 'lucide-react';
-
-export interface Citation {
-  id: string;
-  source: string;
-  type: 'rag' | 'knowledge' | 'external' | 'document';
-  content: string;
-  relevance: number;
-  url?: string;
-  page?: number;
-  timestamp?: Date;
-  documentId?: string;
-}
+import { FileText, ExternalLink, ChevronDown, ChevronRight, Quote, Globe } from 'lucide-react';
+import { Citation } from '../types/index';
 
 export interface CitationReference {
   citationId: string;
@@ -50,7 +39,10 @@ const CitationCard: React.FC<CitationCardProps> = ({
     switch (type) {
       case 'rag':
       case 'document':
+      case 'pdf':
         return <FileText className="w-4 h-4 text-blue-600" />;
+      case 'web':
+        return <Globe className="w-4 h-4 text-blue-600" />;
       case 'external':
         return <ExternalLink className="w-4 h-4 text-green-600" />;
       case 'knowledge':
@@ -64,6 +56,8 @@ const CitationCard: React.FC<CitationCardProps> = ({
     switch (type) {
       case 'rag':
       case 'document':
+      case 'pdf':
+      case 'web':
         return 'border-blue-200 bg-blue-50';
       case 'external':
         return 'border-green-200 bg-green-50';
