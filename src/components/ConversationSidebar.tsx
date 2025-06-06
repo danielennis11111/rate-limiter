@@ -92,7 +92,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            <MessageCircle className="w-16 h-16 text-gray-400 mb-2" />
+            <div className="flex justify-center items-center mb-2">
+              <MessageCircle className="w-16 h-16 text-gray-400" />
+            </div>
             <p className="text-sm">No conversations yet</p>
             <p className="text-xs mt-1">Create your first chat to get started</p>
           </div>

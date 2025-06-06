@@ -92,7 +92,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
   const [ragContext, setRagContext] = useState('');
   const [ragProcessor] = useState(() => new EnhancedRAGProcessor());
-  const [requestCount, setRequestCount] = useState(0);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [rateLimitReset, setRateLimitReset] = useState<Date | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({
@@ -104,7 +103,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentModelId, setCurrentModelId] = useState(template.modelId);
-  const [actualModelUsed, setActualModelUsed] = useState<string>('');
   const [ragEnabled, setRagEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<string>('silky-smooth');
   const [currentCitations, setCurrentCitations] = useState<any[]>([]);
@@ -135,8 +133,8 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     
     return 'silky-smooth'; // Default fallback
   };
+  
   const [selectedBrowserVoice, setSelectedBrowserVoice] = useState<string>('');
-  const [availableBrowserVoices, setAvailableBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiService = useMemo(() => new AIServiceRouter(), []);
@@ -215,7 +213,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       // Load available browser voices
       const loadVoices = () => {
         const voices = synthesis.current!.getVoices();
-        setAvailableBrowserVoices(voices);
         
         // Set default browser voice to first English voice
         const defaultVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
@@ -274,16 +271,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     if (pdfs.length > 0) {
       console.log(`📄 Loading ${pdfs.length} PDFs into RAG processor`);
       pdfs.forEach(pdf => {
-        // Re-create a simple document structure for the RAG processor
-        const simpleDoc = {
-          id: pdf.id,
-          name: pdf.name,
-          content: pdf.content,
-          size: pdf.size,
-          uploadedAt: pdf.uploadedAt,
-          tokenCount: pdf.tokenCount
-        };
-        
         // Add to RAG processor if not already there
         const existingDocs = ragProcessor.getDocuments();
         if (!existingDocs.find(doc => doc.id === pdf.id)) {
@@ -310,8 +297,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     const recentRequests = conversation.messages.filter(msg => 
       msg.role === 'user' && msg.timestamp > oneMinuteAgo
     ).length;
-    
-    setRequestCount(recentRequests);
     
     if (recentRequests >= 15) {
       setIsRateLimited(true);
@@ -549,40 +534,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     }
   };
 
-  // Add TTS diagnostic function
-  const testTTS = async () => {
-    const unifiedTTS = getUnifiedTTS();
-    const status = unifiedTTS.getStatus();
-    
-    console.log('🔊 TTS Diagnostic:', status);
-    
-    const voiceInfo = selectedVoice === 'browser' 
-      ? `${selectedVoice} (${selectedBrowserVoice})` 
-      : selectedVoice;
-    
-    addNotification({
-      type: 'info',
-      title: 'TTS Status',
-      message: `Voice: ${voiceInfo} | Enhanced: ${status.barkAvailable ? '✅' : '❌'}, Browser: ${status.browserAvailable ? '✅' : '❌'}`,
-      duration: 5000
-    });
-    
-    // Test with a simple phrase that mentions the current voice
-    const testPhrase = selectedVoice === 'browser' 
-      ? `Testing ${selectedBrowserVoice} browser voice synthesis` 
-      : `Testing ${selectedVoice} Enhanced voice synthesis`;
-    
-    await speakText(testPhrase, false);
-  };
-
-  const stopSpeaking = () => {
-    const unifiedTTS = getUnifiedTTS();
-    unifiedTTS.stopSpeaking();
-    
-    setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
-    console.log(`🔇 ${template.persona}: Stopped speaking`);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading || isRateLimited) return;
@@ -750,7 +701,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           
           assistantMessage.tokens = response.usage?.completion_tokens || 0;
           assistantMessage.modelUsed = response.model;
-          setActualModelUsed(response.model);
 
           // Check for fallback and show notification
           if (response.fallbackInfo) {
@@ -845,7 +795,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           assistantMessage.content = response.content;
           assistantMessage.tokens = response.usage?.completion_tokens || 0;
           assistantMessage.modelUsed = response.model; // Track actual model used
-          setActualModelUsed(response.model);
 
           // Check for fallback and show notification
           if (response.fallbackInfo) {
@@ -966,148 +915,18 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             </div>
           </div>
           
-          {/* Voice Controls */}
-          {isVoiceEnabled && (
-            <div className="flex items-center space-x-2">
-              {voiceStatus.isSpeaking && (
-                <button
-                  onClick={stopSpeaking}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Stop speaking"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              )}
-              
-              {/* Voice Selector */}
-              <div className="relative">
-                <select
-                  value={selectedVoice}
-                  onChange={(e) => setSelectedVoice(e.target.value)}
-                  className="text-xs bg-white border border-gray-300 rounded px-2 py-1 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-[#FFC627] focus:border-[#FFC627]"
-                  disabled={voiceStatus.isSpeaking}
-                  title="Select voice type"
-                >
-                  {/* Enhanced System TTS Voices */}
-                  <optgroup label="🐕 Default Voices">
-                    <option value="silky-smooth">🎭 Silky Smooth</option>
-                    <option value="scout-professional">💼 Professional</option>
-                    <option value="scout-friendly">😊 Friendly</option>
-                    <option value="scout-storyteller">📖 Storyteller</option>
-                    <option value="scout-quick">⚡ Quick</option>
-                  </optgroup>
-                  
-                  {/* Persona Voices */}
-                  <optgroup label="👥 ASU Personas">
-                    <option value="michael-crow">🤠 Michael Crow (Southern)</option>
-                    <option value="elizabeth-reilley">🚀 Elizabeth Reilley (Vision)</option>
-                    <option value="zohair-developer">💻 Zohair (Developer)</option>
-                    <option value="jennifer-tutor">🎓 Jennifer (Tutor)</option>
-                  </optgroup>
-                  
-                  {/* Additional Test Voices */}
-                  <optgroup label="🎨 Test Voices">
-                    <option value="natural-conversational">💬 Natural</option>
-                    <option value="warm-narrator">🔥 Warm Narrator</option>
-                    <option value="technical-expert">🔬 Technical Expert</option>
-                    <option value="energetic-presenter">⚡ Energetic</option>
-                  </optgroup>
-                  
-                  {/* Browser Fallback */}
-                  <optgroup label="🔊 System Voices">
-                    <option value="browser">🔊 Browser TTS</option>
-                  </optgroup>
-                </select>
-              </div>
-              
-              {/* Browser Voice Selector (when browser mode is selected) */}
-              {selectedVoice === 'browser' && availableBrowserVoices.length > 0 && (
-                <div className="relative">
-                  <select
-                    value={selectedBrowserVoice}
-                    onChange={(e) => setSelectedBrowserVoice(e.target.value)}
-                    className="text-xs bg-white border border-gray-300 rounded px-2 py-1 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-[#FFC627] focus:border-[#FFC627] max-w-32"
-                    disabled={voiceStatus.isSpeaking}
-                    title="Select browser voice"
-                  >
-                    {availableBrowserVoices
-                      .filter(voice => voice.lang.startsWith('en'))
-                      .map((voice) => (
-                        <option key={voice.name} value={voice.name}>
-                          {voice.name.split(' ')[0]} ({voice.lang})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
-              
-              {/* TTS Diagnostic Button */}
-              <button
-                onClick={testTTS}
-                className="p-2 text-[#FFC627] hover:bg-yellow-50 rounded-lg transition-colors"
-                title="Test voice synthesis"
-                disabled={voiceStatus.isSpeaking}
-              >
-                🐕
-              </button>
-              
-              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                {voiceStatus.isSpeaking && (
-                  <span className="flex items-center space-x-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span>Speaking</span>
-                  </span>
-                )}
-                {voiceStatus.isRecording && (
-                  <span className="flex items-center space-x-1">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    <span>Listening</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Rate Limit Indicator */}
-          <div className="flex items-center space-x-2">
-            <div className="text-xs text-gray-500">
-              {requestCount}/15 requests
-            </div>
-            {isRateLimited && rateLimitReset && (
-              <div className="text-xs text-red-600">
-                Rate limited until {formatTime(rateLimitReset)}
-              </div>
-            )}
+          {/* Model Switcher - Top Right */}
+          <div className="flex items-center space-x-3">
+            <ModelSwitcher
+              models={modelManager.getAllModels().filter(model => model.status === 'online')}
+              currentModelId={currentModelId}
+              onModelSwitch={handleModelSwitch}
+              compact={true}
+            />
           </div>
         </div>
         
-        {/* Model Switcher and Template Info */}
-        <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <ModelSwitcher
-            models={modelManager.getAllModels()}
-            currentModelId={currentModelId}
-            onModelSwitch={handleModelSwitch}
-            compact={true}
-          />
-          
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">
-                Using: {actualModelUsed || currentModelId}
-              </span>
-              <span className="text-gray-600">Context: {template.features.contextLength.toLocaleString()} tokens</span>
-            </div>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {template.capabilities.slice(0, 4).map((capability, index) => (
-                <span key={index} className="px-2 py-1 bg-[#FFC627] bg-opacity-20 text-[#191919] text-xs rounded">
-                  {capability}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        
         
         {voiceStatus.error && (
           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
@@ -1287,6 +1106,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           template={template}
           currentInput={input}
           currentModelId={currentModelId}
+          ragContext={ragContext}
         />
       </div>
 

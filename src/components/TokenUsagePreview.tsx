@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ConversationTemplate, Conversation } from '../types/index';
 import { MODEL_LIMITS, estimateTokenCount } from '../utils/tokenCounter';
 
@@ -7,6 +7,7 @@ interface TokenUsagePreviewProps {
   template: ConversationTemplate;
   currentInput: string;
   currentModelId?: string;
+  ragContext?: string;
 }
 
 interface TokenUsage {
@@ -18,6 +19,7 @@ interface TokenUsage {
     systemInstructions: number;
     conversationHistory: number;
     currentMessage: number;
+    ragContent: number;
     expectedResponse: number;
   };
 }
@@ -30,14 +32,15 @@ const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
   conversation,
   template,
   currentInput,
-  currentModelId
+  currentModelId,
+  ragContext
 }) => {
-  // Get actual model context window
-  const getModelContextWindow = (): number => {
+  // Get actual model context window - use useCallback to prevent useEffect dependency warnings
+  const getModelContextWindow = useCallback((): number => {
     const modelId = currentModelId || template.modelId;
     const modelLimits = MODEL_LIMITS[modelId];
     return modelLimits?.contextWindow || template.features.contextLength || 128000;
-  };
+  }, [currentModelId, template.modelId, template.features.contextLength]);
 
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
     used: 0,
@@ -48,6 +51,7 @@ const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
       systemInstructions: 0,
       conversationHistory: 0,
       currentMessage: 0,
+      ragContent: 0,
       expectedResponse: 0
     }
   });
@@ -65,9 +69,10 @@ const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
       sum + (msg.tokens || estimateTokenCount(msg.content)), 0
     );
     const currentTokens = estimateTokenCount(currentInput);
+    const ragTokens = estimateTokenCount(ragContext || '');
     const expectedResponseTokens = modelLimits?.maxOutput || template.parameters.maxTokens || 2000;
 
-    const totalUsed = systemTokens + historyTokens + currentTokens;
+    const totalUsed = systemTokens + historyTokens + currentTokens + ragTokens;
     const remaining = Math.max(0, contextWindow - totalUsed - expectedResponseTokens);
     const percentage = Math.round((totalUsed / contextWindow) * 100);
 
@@ -80,10 +85,11 @@ const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
         systemInstructions: systemTokens,
         conversationHistory: historyTokens,
         currentMessage: currentTokens,
+        ragContent: ragTokens,
         expectedResponse: expectedResponseTokens
       }
     });
-  }, [conversation.messages, template, currentInput, currentModelId]);
+  }, [conversation.messages, template, currentInput, currentModelId, ragContext, getModelContextWindow]);
 
   const getUsageColor = () => {
     if (tokenUsage.percentage < 50) return 'text-green-600';
@@ -149,6 +155,12 @@ const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
               <div className="flex justify-between">
                 <span className="text-gray-600">Conversation history:</span>
                 <span className="font-mono">{tokenUsage.breakdown.conversationHistory.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">RAG/Document content:</span>
+                <span className={`font-mono ${tokenUsage.breakdown.ragContent > 0 ? 'text-blue-600 font-semibold' : ''}`}>
+                  {tokenUsage.breakdown.ragContent.toLocaleString()}
+                </span>
               </div>
             </div>
             

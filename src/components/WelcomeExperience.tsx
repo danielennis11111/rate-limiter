@@ -30,75 +30,165 @@ const WelcomeExperience: React.FC<WelcomeExperienceProps> = ({
         </div>
 
         {/* Experience Cards - Condensed Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {experiences.map((experience) => (
-            <div
-              key={experience.id}
-              onClick={() => onSelectExperience(experience.id)}
-              className={`
-                group relative overflow-hidden rounded-xl p-4 cursor-pointer
-                transition-all duration-200 hover:scale-102 hover:shadow-lg
-                ${experience.color} text-white
-                border border-white border-opacity-20
-              `}
-            >
-              {/* Content */}
-              <div className="relative">
-                {/* Expert Photo & Info */}
-                <div className="flex items-center mb-3">
-                  {experience.icon.startsWith('http') ? (
-                    <img 
-                      src={experience.icon} 
-                      alt={experience.persona}
-                      className="w-10 h-10 rounded-full border-2 border-white border-opacity-50 object-cover mr-3"
-                    />
-                  ) : (
-                    <div className="text-2xl mr-3">{experience.icon}</div>
-                  )}
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold leading-tight">{experience.name}</h3>
-                    <p className="text-white text-opacity-80 text-sm">{experience.persona}</p>
-                  </div>
-                  {/* Hover Arrow */}
-                  <div className="transition-transform duration-200 group-hover:translate-x-1">
-                    <svg className="w-4 h-4 text-white text-opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <p className="text-white text-opacity-90 mb-3 text-sm leading-relaxed" style={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden'
-                }}>
-                  {experience.description}
-                </p>
-
-                {/* Key Capabilities */}
-                <div className="space-y-1 mb-3">
-                  {experience.capabilities.slice(0, 2).map((capability, index) => (
-                    <div key={index} className="flex items-center text-white text-opacity-80">
-                      <div className="w-1.5 h-1.5 bg-white bg-opacity-60 rounded-full mr-2"></div>
-                      <span className="text-xs">{capability}</span>
+        <div className="space-y-8 mb-8">
+          {/* First Row - Jennifer Werner */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {experiences.slice(0, 3).map((experience) => (
+              <div
+                key={experience.id}
+                onClick={() => onSelectExperience(experience.id)}
+                className={`
+                  group relative overflow-hidden rounded-xl p-4 cursor-pointer
+                  transition-all duration-200 hover:scale-102 hover:shadow-lg
+                  ${experience.color} text-white
+                  border border-white border-opacity-20
+                `}
+              >
+                {/* Content */}
+                <div className="relative">
+                  {/* Expert Photo & Info */}
+                  <div className="flex items-center mb-3">
+                    {experience.icon.startsWith('http') ? (
+                      <img 
+                        src={experience.icon} 
+                        alt={experience.persona}
+                        className="w-10 h-10 rounded-full border-2 border-white border-opacity-50 object-cover mr-3"
+                      />
+                    ) : (
+                      <div className="text-2xl mr-3">{experience.icon}</div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold leading-tight">{experience.name}</h3>
+                      <p className="text-white text-opacity-80 text-sm">{experience.persona}</p>
                     </div>
-                  ))}
-                </div>
-
-                {/* Model & Voice Info */}
-                <div className="flex items-center justify-between text-white text-opacity-70 text-xs">
-                  <div className="flex items-center space-x-1">
-                    <ServiceLogo modelId={experience.modelId} variant="dark" size="sm" />
-                    <span>{experience.modelId}</span>
+                    {/* Hover Arrow */}
+                    <div className="transition-transform duration-200 group-hover:translate-x-1">
+                      <svg className="w-4 h-4 text-white text-opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
-                  <span>🎙️ {experience.features.voicePersona}</span>
+
+                  {/* Description */}
+                  <p className="text-white text-opacity-90 mb-3 text-sm leading-relaxed" style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}>
+                    {experience.description}
+                  </p>
+
+                  {/* Key Capabilities */}
+                  <div className="space-y-1 mb-3">
+                    {experience.capabilities.slice(0, 2).map((capability, index) => (
+                      <div key={index} className="flex items-center text-white text-opacity-80">
+                        <div className="w-1.5 h-1.5 bg-white bg-opacity-60 rounded-full mr-2"></div>
+                        <span className="text-xs">{capability}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Model & Voice Info */}
+                  <div className="flex items-center justify-between text-white text-opacity-70 text-xs">
+                    <div className="flex items-center space-x-1">
+                      <ServiceLogo modelId={experience.modelId} variant="dark" size="sm" />
+                      <span>{experience.modelId}</span>
+                    </div>
+                    <span>🎙️ {experience.features.voicePersona}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          {/* Sustainable Private Local Models Section */}
+          {experiences.length > 3 && (
+            <>
+              <div className="text-center mb-6">
+                <div>
+                  
+                  <h2 className="text-2xl font-bold">Sustainable Private Local Models</h2>
+                </div>
+                <p className="text-gray-600 mt-3 max-w-3xl mx-auto leading-relaxed">
+                  Experience the power of <strong>Llama 4 Scout</strong> running entirely on your machine. Transform ideas into 
+                  working applications in minutes with our browser-based dependency installer. No internet required, complete privacy, 
+                  unlimited usage - this is the future of AI development.
+                </p>
+              </div>
+
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {experiences.slice(3).map((experience) => (
+                   <div
+                     key={experience.id}
+                     onClick={() => onSelectExperience(experience.id)}
+                     className={`
+                       group relative overflow-hidden rounded-xl p-4 cursor-pointer
+                       transition-all duration-200 hover:scale-102 hover:shadow-lg
+                       ${experience.color} text-white
+                       border border-white border-opacity-20
+                     `}
+                   >
+                     {/* Content */}
+                     <div className="relative">
+                       {/* Expert Photo & Info */}
+                       <div className="flex items-center mb-3">
+                         {experience.icon.startsWith('http') ? (
+                           <img 
+                             src={experience.icon} 
+                             alt={experience.persona}
+                             className="w-10 h-10 rounded-full border-2 border-white border-opacity-50 object-cover mr-3"
+                           />
+                         ) : (
+                           <div className="text-2xl mr-3">{experience.icon}</div>
+                         )}
+                         <div className="flex-1">
+                           <h3 className="text-lg font-bold leading-tight">{experience.name}</h3>
+                           <p className="text-white text-opacity-80 text-sm">{experience.persona}</p>
+                         </div>
+                         {/* Hover Arrow */}
+                         <div className="transition-transform duration-200 group-hover:translate-x-1">
+                           <svg className="w-4 h-4 text-white text-opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                           </svg>
+                         </div>
+                       </div>
+
+                       {/* Description */}
+                       <p className="text-white text-opacity-90 mb-3 text-sm leading-relaxed" style={{
+                         display: '-webkit-box',
+                         WebkitLineClamp: 2,
+                         WebkitBoxOrient: 'vertical',
+                         overflow: 'hidden'
+                       }}>
+                         {experience.description}
+                       </p>
+
+                       {/* Key Capabilities */}
+                       <div className="space-y-1 mb-3">
+                         {experience.capabilities.slice(0, 2).map((capability, index) => (
+                           <div key={index} className="flex items-center text-white text-opacity-80">
+                             <div className="w-1.5 h-1.5 bg-white bg-opacity-60 rounded-full mr-2"></div>
+                             <span className="text-xs">{capability}</span>
+                           </div>
+                         ))}
+                       </div>
+
+                       {/* Model & Voice Info */}
+                       <div className="flex items-center justify-between text-white text-opacity-70 text-xs">
+                         <div className="flex items-center space-x-1">
+                           <ServiceLogo modelId={experience.modelId} variant="dark" size="sm" />
+                           <span>{experience.modelId}</span>
+                         </div>
+                         <span>🎙️ {experience.features.voicePersona}</span>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </>
+           )}
+         </div>
 
         {/* Features Showcase */}
         <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
