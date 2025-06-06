@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Zap, Lightbulb } from 'lucide-react';
 import { AIModel } from '../types/index';
 import { LlamaService } from '../utils/llamaService';
 
@@ -109,7 +110,10 @@ const ModelStatusBar: React.FC<ModelStatusBarProps> = ({ models, onRefresh }) =>
                 {model.capabilities.join(', ')}
               </div>
               {model.isMultimodal && (
-                <div className="text-xs text-yellow-300">🔮 Multimodal</div>
+                <div className="text-xs text-yellow-300 flex items-center">
+            <Zap className="w-3 h-3 mr-1" />
+            Multimodal
+          </div>
               )}
               <div className="absolute top-full right-2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-900" />
             </div>
@@ -133,7 +137,8 @@ const ModelStatusBar: React.FC<ModelStatusBarProps> = ({ models, onRefresh }) =>
       {/* Quick Start Instructions for Offline State */}
       {ollamaStatus === 'offline' && (
         <div className="hidden lg:flex items-center text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
-          💡 Start Ollama: <code className="ml-1 bg-gray-200 px-1 rounded">ollama serve</code>
+          <Lightbulb className="w-3 h-3 mr-1" />
+          Start Ollama: <code className="ml-1 bg-gray-200 px-1 rounded">ollama serve</code>
         </div>
       )}
     </div>

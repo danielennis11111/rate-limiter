@@ -118,9 +118,17 @@ export class EnhancedRAGProcessor {
    * Extract PDF content (existing functionality)
    */
   private async extractPDFContent(file: File): Promise<string> {
-    // Existing PDF processing logic from PDFProcessor
-    // For now, return placeholder - integrate with existing PDF processor
-    return `[PDF Content from ${file.name} - integrate with existing PDFProcessor]`;
+    // Import dynamically to avoid circular dependencies
+    const { PDFProcessor } = await import('./pdfProcessor');
+    
+    try {
+      const processedPDF = await PDFProcessor.processPDF(file);
+      return processedPDF.chunks.map(chunk => chunk.content).join('\n\n');
+    } catch (error) {
+      console.error('Error processing PDF with PDFProcessor:', error);
+      // Fallback to basic text extraction
+      return `[PDF Content from ${file.name} - Error: ${error}]`;
+    }
   }
   
   /**
@@ -456,12 +464,20 @@ export class EnhancedRAGProcessor {
   }
   
   /**
-   * Search documents using simple keyword matching
-   * In production, you'd use semantic search with embeddings
+   * Search documents using improved keyword matching and phrase detection
    */
   searchDocuments(query: RAGQuery): RAGResult[] {
-    const queryTerms = query.query.toLowerCase().split(/\s+/);
+    const queryTerms = query.query.toLowerCase().split(/\s+/).filter(term => term.length > 2);
     const results: RAGResult[] = [];
+    
+    // Extract meaningful phrases (2-3 words)
+    const phrases: string[] = [];
+    for (let i = 0; i < queryTerms.length - 1; i++) {
+      phrases.push(queryTerms.slice(i, i + 2).join(' '));
+      if (i < queryTerms.length - 2) {
+        phrases.push(queryTerms.slice(i, i + 3).join(' '));
+      }
+    }
     
     this.documents.forEach(doc => {
       // Filter by document type if specified
@@ -471,20 +487,35 @@ export class EnhancedRAGProcessor {
       
       doc.chunks.forEach(chunk => {
         const content = chunk.content.toLowerCase();
+        const words = content.split(/\s+/);
         let relevanceScore = 0;
         
-        // Simple keyword matching
-        queryTerms.forEach(term => {
-          const occurrences = (content.match(new RegExp(term, 'g')) || []).length;
-          relevanceScore += occurrences / content.split(/\s+/).length;
+        // Phrase matching (higher weight)
+        phrases.forEach(phrase => {
+          if (content.includes(phrase)) {
+            relevanceScore += 0.5; // High score for phrase matches
+          }
         });
         
-        if (relevanceScore >= query.minRelevanceScore) {
+        // Individual keyword matching
+        queryTerms.forEach(term => {
+          const regex = new RegExp(`\\b${term}\\b`, 'g');
+          const matches = content.match(regex) || [];
+          relevanceScore += (matches.length * 0.1) / Math.max(words.length / 100, 1);
+        });
+        
+        // Boost score for shorter chunks (more focused content)
+        if (words.length < 100) {
+          relevanceScore *= 1.2;
+        }
+        
+        // Use much lower threshold for better results
+        if (relevanceScore >= Math.max(0.05, query.minRelevanceScore * 0.1)) {
           results.push({
             chunk,
             document: doc,
             relevanceScore,
-            context: this.extractContext(chunk.content, queryTerms)
+            context: this.extractBetterContext(chunk.content, queryTerms, phrases)
           });
         }
       });
@@ -507,6 +538,45 @@ export class EnhancedRAGProcessor {
     );
     
     return relevantSentences.slice(0, 3).join('. ') + '.';
+  }
+
+  /**
+   * Extract better context with phrase awareness and surrounding sentences
+   */
+  private extractBetterContext(content: string, queryTerms: string[], phrases: string[]): string {
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    const relevantIndices: number[] = [];
+    
+    // Find sentences with phrases first (higher priority)
+    sentences.forEach((sentence, index) => {
+      const lowerSentence = sentence.toLowerCase();
+      if (phrases.some(phrase => lowerSentence.includes(phrase))) {
+        relevantIndices.push(index);
+      }
+    });
+    
+    // Then find sentences with individual terms
+    sentences.forEach((sentence, index) => {
+      const lowerSentence = sentence.toLowerCase();
+      if (!relevantIndices.includes(index) && 
+          queryTerms.some(term => lowerSentence.includes(term))) {
+        relevantIndices.push(index);
+      }
+    });
+    
+    // Include surrounding context
+    const expandedIndices = new Set<number>();
+    relevantIndices.forEach(index => {
+      expandedIndices.add(Math.max(0, index - 1)); // Previous sentence
+      expandedIndices.add(index); // Current sentence
+      expandedIndices.add(Math.min(sentences.length - 1, index + 1)); // Next sentence
+    });
+    
+    // Sort and extract sentences
+    const sortedIndices = Array.from(expandedIndices).sort((a, b) => a - b);
+    const contextSentences = sortedIndices.map(i => sentences[i].trim());
+    
+    return contextSentences.slice(0, 5).join('. ') + '.';
   }
   
   /**

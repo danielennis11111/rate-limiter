@@ -380,7 +380,7 @@ What learning goal can I help you achieve?`,
     persona: 'Llama 3.1 8B (Local)',
     description: 'Experience lightning-fast AI responses running entirely on your local machine - no internet required!',
     modelId: 'llama3.1:8b', // Local Ollama model
-    icon: '🦙',
+    icon: 'llama',
     color: 'bg-gradient-to-r from-amber-600 to-orange-600',
     systemPrompt: `I'm Llama 3.1 8B running locally on your machine! I'm fast, private, and always available.
 

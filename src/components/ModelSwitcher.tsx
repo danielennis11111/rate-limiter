@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, Cpu, Zap, Clock, Check } from 'lucide-react';
+import ServiceLogo from './ServiceLogo';
 import { AIModel } from '../types/index';
 
 interface ModelSwitcherProps {
@@ -46,15 +47,15 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'online':
-        return '🟢';
+        return <div className="w-2 h-2 bg-green-500 rounded-full"></div>;
       case 'offline':
-        return '🔴';
+        return <div className="w-2 h-2 bg-red-500 rounded-full"></div>;
       case 'limited':
-        return '🟡';
+        return <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>;
       case 'loading':
-        return '🔵';
+        return <div className="w-2 h-2 bg-[#FFC627] rounded-full animate-pulse"></div>;
       default:
-        return '⚪';
+        return <div className="w-2 h-2 bg-gray-400 rounded-full"></div>;
     }
   };
 
@@ -74,10 +75,8 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   };
 
   const getModelIcon = (modelId: string) => {
-    if (modelId.includes('gpt')) return '🤖';
-    if (modelId.includes('gemini')) return '💎';
-    if (modelId.includes('llama')) return '🦙';
-    return '🔬';
+    // Use actual service logos instead of generic icons
+    return <ServiceLogo modelId={modelId} variant="light" size="sm" />;
   };
 
   if (compact) {
@@ -87,7 +86,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center space-x-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors"
         >
-          <span className="text-xs">{getStatusIcon(currentModel.status)}</span>
+          <div className="text-xs">{getStatusIcon(currentModel.status)}</div>
           <span className="font-medium">{currentModel.name}</span>
           <ChevronDown className="w-3 h-3" />
         </button>
@@ -112,7 +111,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                   }`}
                 >
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs">{getModelIcon(model.id)}</span>
+                    <div className="text-xs">{getModelIcon(model.id)}</div>
                     <span className="text-sm font-medium">{model.name}</span>
                   </div>
                   <div className="flex items-center space-x-1">
@@ -120,7 +119,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                       <Check className="w-3 h-3 text-[#FFC627]" />
                     )}
                     <div className={`flex items-center space-x-1 text-xs ${getStatusColor(model.status)}`}>
-                      <span>{getStatusIcon(model.status)}</span>
+                      <div>{getStatusIcon(model.status)}</div>
                       {model.status === 'limited' && (
                         <span className="text-xs">Limited</span>
                       )}
@@ -152,12 +151,14 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
 
       {/* Current Model Display */}
       <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-        <div className="text-2xl">{getModelIcon(currentModel.id)}</div>
+        <div className="flex items-center justify-center">
+          <ServiceLogo modelId={currentModel.id} variant="light" size="lg" />
+        </div>
         <div className="flex-1">
           <div className="flex items-center space-x-2">
             <span className="font-medium text-gray-900">{currentModel.name}</span>
             <div className={`flex items-center space-x-1 text-xs ${getStatusColor(currentModel.status)}`}>
-              <span>{getStatusIcon(currentModel.status)}</span>
+              <div>{getStatusIcon(currentModel.status)}</div>
               <span className="font-medium">{getStatusText(currentModel.status)}</span>
             </div>
           </div>
@@ -187,7 +188,9 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <span className="text-xl">{getModelIcon(model.id)}</span>
+                  <div className="flex items-center justify-center">
+                    <ServiceLogo modelId={model.id} variant="light" size="md" />
+                  </div>
                   <div>
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-gray-900">{model.name}</span>

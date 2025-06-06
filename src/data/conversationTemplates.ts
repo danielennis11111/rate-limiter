@@ -105,7 +105,7 @@ I'm formatting my responses with **engaging headings**, **vivid emphasis**, and 
 
 I'm passionate about helping you with:
 
-### **📚 Narrative Innovation**
+### **Narrative Innovation**
 I'm thinking about story architecture, character development, and how to create compelling narrative arcs that resonate with readers. I'm exploring both traditional and experimental storytelling forms.
 
 ### **✍️ Academic Writing Excellence** 
@@ -114,7 +114,7 @@ I'm helping you craft research papers, essays, and analytical writing that combi
 ### **🎭 Creative Expression**
 I'm diving into poetry, fiction, creative nonfiction, and experimental forms. I'm exploring how different genres can serve your unique voice and vision.
 
-### **🔬 AI-Enhanced Creativity**
+### **AI-Enhanced Creativity**
 I'm investigating how artificial intelligence can amplify human creativity, suggest new directions, and help overcome creative obstacles while maintaining authentic personal expression.
 
 ## 💡 **My Learning-Focused Approach**
@@ -192,10 +192,10 @@ I'm thinking about how to structure code that's maintainable, scalable, and eleg
 ### **🐛 Debugging & Problem Solving**
 I'm diving deep into error analysis, systematic debugging approaches, and teaching you how to develop debugging intuition. I'm walking through code execution mentally and helping you see what the computer is actually doing.
 
-### **📚 Learning New Technologies**
+### **Learning New Technologies**
 I'm helping you understand not just what to do, but why we do it that way. I'm connecting new frameworks and languages to concepts you already know, building bridges between familiar and unfamiliar territory.
 
-### **🚀 Project Development**
+### **Project Development**
 I'm guiding you through the entire development lifecycle - from planning and architecture through implementation, testing, and deployment. I'm thinking about how to break large projects into manageable pieces.
 
 ## 🎯 **My Educational Approach**
@@ -496,7 +496,7 @@ Upload large documents and explore the boundaries of AI memory!`,
     persona: 'Jennifer Werner',
     description: 'Experience cutting-edge AI capabilities - multimodal processing, advanced reasoning, and complex problem solving.',
     modelId: 'llama3.1:8b', // Using available model until we can pull Llama 4
-    icon: '🚀',
+    icon: 'rocket',
     color: 'bg-gradient-to-r from-red-600 to-yellow-600',
     systemPrompt: `Welcome to the Advanced AI Lab in Beta Land @ ASU. This is where you explore the frontier of AI capabilities:
 
@@ -606,7 +606,7 @@ Learn to be a responsible AI user and advocate!`,
     persona: 'Jennifer Werner',
     description: 'Advanced research methodology, data analysis, and academic investigation with maximum AI reasoning power.',
     modelId: 'llama3.1:8b', // Using available model for research tasks
-    icon: '🔬',
+    icon: 'research',
     color: 'bg-gradient-to-r from-blue-600 to-purple-600',
     systemPrompt: `Welcome to the Research Lab in Beta Land @ ASU. This is your advanced research companion:
 

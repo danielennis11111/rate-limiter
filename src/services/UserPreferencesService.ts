@@ -367,7 +367,7 @@ class UserPreferencesService {
     return [
       {
         id: 'academic-focus',
-        name: '📚 Academic Focus',
+        name: 'Academic Focus',
         description: 'Optimized for academic research and study',
         category: 'academic',
         preferredModels: ['gemini-2.0-flash', 'gemini-grounded-search'],

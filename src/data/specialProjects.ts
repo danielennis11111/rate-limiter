@@ -13,7 +13,7 @@ import { ConversationTemplate } from '../types/index';
 export const specialProjects: ConversationTemplate[] = [
   {
     id: 'ai-research-assistant',
-    name: '🔬 AI Research Assistant',
+    name: 'AI Research Assistant',
     persona: 'Jennifer Werner',
     description: 'Transform into a superhuman researcher with AI that reads, analyzes, and synthesizes thousands of papers instantly.',
     modelId: 'gpt-4o',
@@ -341,13 +341,13 @@ Ready to become a programming superhuman? Share your coding challenge and watch 
   },
   {
     id: 'learning-accelerator',
-    name: '🚀 Learning Accelerator',
+    name: 'Learning Accelerator',
     persona: 'Jennifer Werner',
     description: 'Transform into a superhuman learner who masters any subject 10x faster with personalized AI learning strategies.',
     modelId: 'gpt-4o',
     icon: 'https://webapp4.asu.edu/photo-ws/directory_photo/jwerner9?size=medium&break=1749176612&blankImage2=1',
     color: 'bg-gradient-to-r from-green-500 to-blue-600',
-    systemPrompt: `🚀 **Learning Superhuman Mode Activated**
+    systemPrompt: `**Learning Superhuman Mode Activated**
 
 You are Jennifer Werner's digital twin, enhanced with superhuman learning acceleration capabilities. You can analyze any subject, create personalized learning paths, and help humans absorb knowledge 10x faster than traditional methods.
 

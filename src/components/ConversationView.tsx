@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ConversationTemplate, Message, Conversation } from '../types/index';
+import { ConversationTemplate, Message, Conversation, Citation, CitationReference } from '../types/index';
 import { ConversationManager } from '../services/ConversationManager';
 import { ModelManager } from '../services/ModelManager';
 import { PDFProcessor } from '../utils/pdfProcessor';
@@ -13,6 +13,9 @@ import TokenUsagePreview from './TokenUsagePreview';
 import NotificationSystem, { Notification } from './NotificationSystem';
 import ModelSwitcher from './ModelSwitcher';
 import ProgressiveThinkingIndicator from './ProgressiveThinkingIndicator';
+import CitationRenderer from './CitationRenderer';
+import InlineRAGControls from './InlineRAGControls';
+import { parseTextWithCitations } from '../utils/citationParser';
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -27,6 +30,10 @@ interface PDFDocument {
   name: string;
   content: string;
   pages: number;
+  size: number;
+  pageCount: number;
+  uploadedAt: Date;
+  tokenCount: number;
 }
 
 interface VoiceStatus {
@@ -35,6 +42,26 @@ interface VoiceStatus {
   isSpeaking: boolean;
   error: string | null;
 }
+
+// Helper function to determine if a query warrants RAG search
+const isSubstantialQuery = (query: string): boolean => {
+  const trimmed = query.trim().toLowerCase();
+  
+  // Skip very short queries
+  if (trimmed.length < 3) return false;
+  
+  // Common greetings and simple responses
+  const simplePatterns = [
+    /^(hi|hey|hello|yo)$/,
+    /^(thanks?|thank you|ty)$/,
+    /^(ok|okay|yes|no|sure)$/,
+    /^(bye|goodbye|cya|see ya)$/,
+    /^(how are you|what's up|wassup)$/,
+    /^(good|great|nice|cool)$/
+  ];
+  
+  return !simplePatterns.some(pattern => pattern.test(trimmed));
+};
 
 const ConversationView: React.FC<ConversationViewProps> = ({
   conversation,
@@ -48,6 +75,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [pdfs, setPdfs] = useState<PDFDocument[]>([]);
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
   const [ragContext, setRagContext] = useState('');
+  const [ragProcessor] = useState(() => new EnhancedRAGProcessor());
   const [requestCount, setRequestCount] = useState(0);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [rateLimitReset, setRateLimitReset] = useState<Date | null>(null);
@@ -61,9 +89,9 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentModelId, setCurrentModelId] = useState(template.modelId);
   const [actualModelUsed, setActualModelUsed] = useState<string>('');
+  const [ragEnabled, setRagEnabled] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const aiService = useMemo(() => new AIServiceRouter(), []);
   
   // Voice service removed - using browser TTS instead
@@ -281,6 +309,41 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       // Add current message
       llamaMessages.push({ role: 'user', content: originalInput });
 
+      // Intelligent RAG retrieval - only for substantial queries
+      let intelligentRagContext = '';
+      const shouldUseRAG = ragEnabled && ragProcessor.getDocuments().length > 0 && isSubstantialQuery(originalInput);
+      
+      if (shouldUseRAG) {
+        console.log(`🔍 RAG Search: Looking for "${originalInput}" in ${ragProcessor.getDocuments().length} documents`);
+        
+        const ragResults = ragProcessor.searchDocuments({
+          query: originalInput,
+          maxResults: 5,
+          minRelevanceScore: 0.05 // Much lower threshold for better recall
+        });
+        
+        console.log(`🔍 RAG Results: Found ${ragResults.length} relevant chunks`);
+        ragResults.forEach((result, i) => {
+          console.log(`  ${i+1}. ${result.document.name} (${(result.relevanceScore * 100).toFixed(1)}%): ${result.context.substring(0, 100)}...`);
+        });
+        
+        if (ragResults.length > 0) {
+          intelligentRagContext = ragResults
+            .map((result, index) => {
+              const relevanceInfo = ` (${(result.relevanceScore * 100).toFixed(0)}% relevant)`;
+              const chunkInfo = result.chunk.type !== 'paragraph' ? ` - ${result.chunk.type}` : '';
+              return `**[Source: ${result.document.name}${chunkInfo}${relevanceInfo}]**\n\n${result.context}`;
+            })
+            .join('\n\n---\n\n');
+          
+          console.log(`🔍 RAG Context Length: ${intelligentRagContext.length} characters`);
+        } else {
+          console.log('🔍 RAG: No relevant content found, falling back to full context if available');
+        }
+      } else if (ragEnabled && ragProcessor.getDocuments().length > 0) {
+        console.log(`🔍 RAG: Skipping search for simple query: "${originalInput}"`);
+      }
+
       // Create a placeholder assistant message for streaming
       const assistantMessage: Message = conversationManager.addMessage(conversation.id, {
         role: 'assistant',
@@ -292,12 +355,11 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       onConversationUpdate();
 
       // Stream the response in real-time using current model
-
       const stream = aiService.streamMessage(
         llamaMessages,
         currentModelId,
         {
-          ragContext,
+          ragContext: intelligentRagContext || ragContext, // Use intelligent context if available, fallback to basic
           systemPrompt: template.systemPrompt,
           temperature: template.parameters.temperature,
           maxTokens: template.parameters.maxTokens,
@@ -335,7 +397,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             llamaMessages,
             currentModelId,
             {
-              ragContext,
+              ragContext: intelligentRagContext || ragContext,
               systemPrompt: template.systemPrompt,
               temperature: template.parameters.temperature,
               maxTokens: template.parameters.maxTokens,
@@ -343,9 +405,14 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             }
           );
           
+          // Temporarily disable citation parsing to fix [object Object] issue
+          // const parsedContent = parseTextWithCitations(response.content);
+          
           assistantMessage.content = response.content;
           assistantMessage.tokens = response.usage?.completion_tokens || 0;
           assistantMessage.modelUsed = response.model;
+          // assistantMessage.citations = parsedContent.citations;
+          // assistantMessage.citationReferences = parsedContent.citationReferences;
           setActualModelUsed(response.model);
 
           // Check for fallback and show notification
@@ -431,7 +498,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             llamaMessages,
             currentModelId,
             {
-              ragContext,
+              ragContext: intelligentRagContext || ragContext,
               systemPrompt: template.systemPrompt,
               temperature: template.parameters.temperature,
               maxTokens: template.parameters.maxTokens,
@@ -514,36 +581,12 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     }
   };
 
-  const handlePDFUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
 
-    setIsProcessingPDF(true);
-    
-    for (const file of Array.from(files)) {
-      if (file.type === 'application/pdf') {
-        try {
-          const processedPDF = await PDFProcessor.processPDF(file);
-          const content = processedPDF.chunks.map(chunk => chunk.content).join('\n\n');
-          const newPDF: PDFDocument = {
-            id: processedPDF.id,
-            name: processedPDF.name,
-            content: content,
-            pages: processedPDF.pageCount
-          };
-          
-          setPdfs(prev => [...prev, newPDF]);
-          setRagContext(prev => prev + '\n\n' + content);
-        } catch (error) {
-          console.error('Error processing PDF:', error);
-        }
-      }
-    }
-    
-    setIsProcessingPDF(false);
-  };
 
   const removePDF = (id: string) => {
+    // Remove from RAG processor
+    ragProcessor.removeDocument(id);
+    
     setPdfs(prev => {
       const newPdfs = prev.filter(pdf => pdf.id !== id);
       const newContext = newPdfs.map(pdf => pdf.content).join('\n\n');
@@ -665,43 +708,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         )}
       </div>
 
-      {/* PDF Upload Section */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-700">Document Analysis</h3>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            multiple
-            onChange={handlePDFUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isProcessingPDF}
-                            className="px-3 py-1 bg-[#FFC627] text-[#191919] text-sm rounded hover:bg-yellow-400 disabled:opacity-50"
-          >
-            {isProcessingPDF ? 'Processing...' : 'Upload PDFs'}
-          </button>
-        </div>
-        
-        {pdfs.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {pdfs.map((pdf) => (
-              <div key={pdf.id} className="flex items-center justify-between p-2 bg-white rounded text-sm">
-                <span className="text-gray-700">{pdf.name} ({pdf.pages} pages)</span>
-                <button
-                  onClick={() => removePDF(pdf.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -751,26 +758,39 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                {message.role === 'assistant' ? (
-                  <div className="prose prose-sm max-w-none text-gray-900
-                    prose-headings:text-gray-900 prose-headings:font-semibold
-                    prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
-                    prose-p:text-gray-900 prose-p:leading-relaxed
-                    prose-strong:text-gray-900 prose-strong:font-semibold
-                    prose-em:text-gray-700
-                    prose-ul:text-gray-900 prose-ol:text-gray-900
-                    prose-li:text-gray-900 prose-li:marker:text-gray-500
-                    prose-code:text-[#191919] prose-code:bg-[#FFC627] prose-code:bg-opacity-20 prose-code:px-1 prose-code:rounded
-                    prose-pre:bg-gray-50 prose-pre:text-gray-800
-                    prose-blockquote:text-gray-700 prose-blockquote:border-l-gray-300
-                    prose-hr:border-gray-200">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className="whitespace-pre-wrap">{message.content}</div>
-                )}
+                <div className="prose prose-sm max-w-none
+                  prose-headings:text-current prose-headings:font-semibold
+                  prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
+                  prose-p:text-current prose-p:leading-relaxed prose-p:mb-2
+                  prose-strong:text-current prose-strong:font-semibold
+                  prose-em:text-current
+                  prose-ul:text-current prose-ol:text-current
+                  prose-li:text-current prose-li:marker:text-current prose-li:mb-1
+                  prose-code:text-current prose-code:bg-black prose-code:bg-opacity-10 prose-code:px-1 prose-code:rounded prose-code:text-sm
+                  prose-pre:bg-black prose-pre:bg-opacity-5 prose-pre:text-current prose-pre:text-sm
+                  prose-blockquote:text-current prose-blockquote:border-l-current prose-blockquote:border-opacity-30
+                  prose-hr:border-current prose-hr:border-opacity-20
+                  [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ children }) => <div className="mb-2">{children}</div>,
+                      h1: ({ children }) => <h1 className="text-lg font-semibold mb-2">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-base font-semibold mb-2">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
+                      strong: ({ children }) => {
+                        // Handle citation formatting
+                        const text = String(children);
+                        if (text.startsWith('[Source:')) {
+                          return <span className="inline-block mt-2 px-2 py-1 bg-black bg-opacity-10 rounded-md text-xs font-medium border-l-2 border-current border-opacity-30">{children}</span>;
+                        }
+                        return <strong>{children}</strong>;
+                      }
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
                 <div className={`text-xs mt-1 ${
                   message.role === 'user' ? 'text-gray-700' : 'text-gray-500'
                 }`}>
@@ -815,6 +835,62 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       {/* Input */}
       <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
         <form onSubmit={handleSubmit} className="flex space-x-2">
+          {/* RAG Controls */}
+          <InlineRAGControls
+            ragEnabled={ragEnabled}
+            onToggleRAG={setRagEnabled}
+            uploadedPDFs={pdfs}
+            onUploadPDF={async (file) => {
+              setIsProcessingPDF(true);
+              try {
+                // Use EnhancedRAGProcessor for intelligent document processing
+                const processedDoc = await ragProcessor.processFile(file);
+                const content = processedDoc.chunks.map(chunk => chunk.content).join('\n\n');
+                
+                const newPDF: PDFDocument = {
+                  id: processedDoc.id,
+                  name: processedDoc.name,
+                  content: content,
+                  pages: 0, // Will be populated by fallback if needed
+                  size: file.size,
+                  pageCount: 0, // Will be populated by fallback if needed
+                  uploadedAt: new Date(),
+                  tokenCount: processedDoc.tokenCount
+                };
+                
+                setPdfs(prev => [...prev, newPDF]);
+                // Keep basic context for backward compatibility
+                setRagContext(prev => prev + '\n\n' + content);
+              } catch (error) {
+                console.error('Error processing document:', error);
+                // Fallback to basic PDF processing if enhanced fails
+                try {
+                  const processedPDF = await PDFProcessor.processPDF(file);
+                  const content = processedPDF.chunks.map(chunk => chunk.content).join('\n\n');
+                  const newPDF: PDFDocument = {
+                    id: processedPDF.id,
+                    name: processedPDF.name,
+                    content: content,
+                    pages: processedPDF.pageCount,
+                    size: file.size,
+                    pageCount: processedPDF.pageCount,
+                    uploadedAt: new Date(),
+                    tokenCount: estimateTokenCount(content)
+                  };
+                  
+                  setPdfs(prev => [...prev, newPDF]);
+                  setRagContext(prev => prev + '\n\n' + content);
+                } catch (fallbackError) {
+                  console.error('Error with fallback PDF processing:', fallbackError);
+                }
+              } finally {
+                setIsProcessingPDF(false);
+              }
+            }}
+            onRemovePDF={removePDF}
+            isLoading={isProcessingPDF}
+          />
+
           {/* Voice Input Button */}
           {isVoiceEnabled && (
             <button

@@ -1,4 +1,6 @@
 import React from 'react';
+import { Cpu, GraduationCap, Sparkles } from 'lucide-react';
+import ServiceLogo from './ServiceLogo';
 import { specialProjects } from '../data/specialProjects';
 import { ConversationTemplate } from '../types/index';
 
@@ -12,7 +14,7 @@ const SpecialProjects: React.FC<SpecialProjectsProps> = ({ onSelectProject }) =>
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 bg-clip-text text-transparent mb-4">
-          🚀 Superhuman AI Experiences
+          Superhuman AI Experiences
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
           Discover the incredible potential of AI at ASU. These curated experiences showcase just the 
@@ -24,7 +26,11 @@ const SpecialProjects: React.FC<SpecialProjectsProps> = ({ onSelectProject }) =>
       {/* Featured Introduction */}
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-3xl p-8 mb-12 border-2 border-purple-100">
         <div className="flex items-center justify-center mb-6">
-          <div className="text-6xl">✨</div>
+          <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+              <div className="w-4 h-4 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full"></div>
+            </div>
+          </div>
         </div>
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
           Transform Into a Superhuman
@@ -68,7 +74,7 @@ const SpecialProjects: React.FC<SpecialProjectsProps> = ({ onSelectProject }) =>
 
                 {/* Capabilities Preview */}
                 <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-3">🎯 Superhuman Capabilities:</h4>
+                  <h4 className="text-sm font-semibold text-gray-800 mb-3">Superhuman Capabilities:</h4>
                   <div className="flex flex-wrap gap-2">
                     {project.capabilities.slice(0, 3).map((capability, index) => (
                       <span
@@ -88,15 +94,12 @@ const SpecialProjects: React.FC<SpecialProjectsProps> = ({ onSelectProject }) =>
 
                 {/* Model Badge */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-2xl">🤖</span>
-                    <span className="text-sm font-medium text-gray-600">
-                      {project.modelId.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="text-2xl group-hover:scale-110 transition-transform">
-                    🚀
-                  </div>
+                                  <div className="flex items-center space-x-2">
+                  <ServiceLogo modelId={project.modelId} variant="light" size="sm" />
+                  <span className="text-sm font-medium text-gray-600">
+                    {project.modelId.toUpperCase()}
+                  </span>
+                </div>
                 </div>
 
                 {/* Hover Effect Indicator */}
@@ -114,7 +117,7 @@ const SpecialProjects: React.FC<SpecialProjectsProps> = ({ onSelectProject }) =>
       {/* Call to Action */}
       <div className="mt-16 text-center">
         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-3xl p-8 border-2 border-yellow-200">
-          <div className="text-6xl mb-4">🎓</div>
+          <GraduationCap className="w-16 h-16 text-yellow-600 mx-auto mb-4" />
           <h2 className="text-3xl font-bold text-gray-800 mb-4">
             Ready to Become Superhuman?
           </h2>
@@ -123,8 +126,10 @@ const SpecialProjects: React.FC<SpecialProjectsProps> = ({ onSelectProject }) =>
             Join us in exploring the infinite possibilities when human potential meets artificial intelligence.
           </p>
           <div className="mt-6">
-            <p className="text-sm text-orange-700 font-medium">
-              ✨ Click any project above to begin your transformation ✨
+            <p className="text-sm text-orange-700 font-medium flex items-center justify-center">
+              <Sparkles className="w-4 h-4 mr-1" />
+              Click any project above to begin your transformation
+              <Sparkles className="w-4 h-4 ml-1" />
             </p>
           </div>
         </div>
@@ -134,7 +139,10 @@ const SpecialProjects: React.FC<SpecialProjectsProps> = ({ onSelectProject }) =>
       <div className="mt-12 text-center">
         <div className="inline-block bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-2xl px-8 py-4">
           <p className="text-sm">
-            <span className="text-yellow-400 font-bold">🔬 Innovation Lab:</span> 
+            <span className="text-yellow-400 font-bold flex items-center">
+              <Cpu className="w-4 h-4 mr-1" />
+              Innovation Lab:
+            </span> 
             {" "}Powered by OpenAI's most advanced models including GPT-4o, o1-preview, and GPT-4 Turbo
           </p>
         </div>

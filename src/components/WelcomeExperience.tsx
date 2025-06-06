@@ -16,7 +16,7 @@ const WelcomeExperience: React.FC<WelcomeExperienceProps> = ({
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-6">
-            <div className="text-6xl mr-4">🚀</div>
+  
             <div>
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">
                 Beta Land @ ASU

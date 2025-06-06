@@ -78,7 +78,18 @@ export class LlamaService {
 Make your responses visually appealing and easy to scan with proper formatting.`;
         
         if (options.ragContext) {
-          systemContent += `\n\nUse the following context from the user's documents to provide relevant insights:\n\n${options.ragContext}\n\nBased on this context and your training, provide helpful, actionable advice.`;
+          systemContent += `\n\n## 📚 DOCUMENT CONTEXT
+
+The user has uploaded documents with relevant information. Here is the most relevant content for this query:
+
+${options.ragContext}
+
+**IMPORTANT INSTRUCTIONS:**
+- Use this document context to provide accurate, specific answers
+- Reference specific information from the documents when relevant
+- If the documents contain exact answers, quote them
+- If the question can't be answered from the documents, say so clearly
+- Combine document information with your general knowledge appropriately`;
         }
         
         const systemMessage = {
@@ -98,10 +109,11 @@ Make your responses visually appealing and easy to scan with proper formatting.`
       }
 
       // Convert model name to Ollama format
-      const ollamaModel = model.includes('3.2-3B') ? 'llama3.2:3b' : 
+      const ollamaModel = model.includes('3.1') ? 'llama3.1:8b' :
+                         model.includes('3.2-3B') ? 'llama3.2:3b' : 
                          model.includes('3.2-11B') ? 'llama3.2:11b' :
-                         model.includes('Llama-4') ? 'llama3.2:3b' : // Fallback to 3B for now
-                         'llama3.2:3b';
+                         model.includes('Llama-4') ? 'llama3.1:8b' : // Fallback to 3.1:8b
+                         'llama3.1:8b'; // Default to 3.1:8b as user specified
 
       // Prepare messages for Ollama format
       const messageText = processedMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + '\nassistant:';
@@ -159,16 +171,17 @@ Make your responses visually appealing and easy to scan with proper formatting.`
     let simulatedContent = '';
     
     if (options.ragContext) {
-      simulatedContent = `Based on your uploaded documents, I understand you're asking about "${lastUserMessage}". 
+      simulatedContent = `## 📚 Based on Your Documents
 
-From the context in your knowledge base, here are some relevant insights:
-${options.ragContext.substring(0, 300)}...
+I found relevant information in your uploaded documents for: "${lastUserMessage}"
 
-This suggests that focusing on evidence-based approaches and systematic thinking can help address the challenges you're facing. The research indicates that breaking down complex problems into manageable components and applying structured methodologies leads to better outcomes.
+**Document Context:**
+${options.ragContext.substring(0, 500)}${options.ragContext.length > 500 ? '...' : ''}
 
-Would you like me to elaborate on any specific aspect of this topic using the information from your documents?
+**Analysis:**
+Based on the content in your documents, I can see specific information that directly relates to your question. When the Ollama server is running, I would provide a detailed analysis combining this document context with AI reasoning to give you comprehensive, accurate answers.
 
-[Note: Ollama server not running - this is a simulated response. Start Ollama to get real AI responses.]`;
+**Note:** This is a simulated response because Ollama is not currently running. Start Ollama with \`ollama serve\` to get real AI-powered responses that properly analyze your documents.`;
     } else {
       simulatedContent = `I understand you're asking about "${lastUserMessage}". 
 

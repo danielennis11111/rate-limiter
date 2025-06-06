@@ -1,4 +1,6 @@
 import React from 'react';
+import { MessageCircle, Cpu, Zap, FlaskConical } from 'lucide-react';
+import ServiceLogo from './ServiceLogo';
 import { Conversation, ConversationTemplate } from '../types/index';
 
 interface ConversationSidebarProps {
@@ -24,7 +26,28 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 }) => {
   const getTemplateIcon = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
-    return template?.icon || '🤖';
+    const icon = template?.icon;
+    
+    // If template has a modelId, use the service logo
+    if (template?.modelId) {
+      return <ServiceLogo modelId={template.modelId} variant="light" size="sm" />;
+    }
+    
+    // Map icon names to components for non-model templates
+    if (typeof icon === 'string') {
+      switch (icon) {
+        case 'llama':
+          return <ServiceLogo modelId="llama3.1:8b" variant="light" size="sm" />;
+        case 'rocket':
+          return <Zap className="w-4 h-4 text-red-600" />;
+        case 'research':
+          return <FlaskConical className="w-4 h-4 text-blue-600" />;
+        default:
+          return <Cpu className="w-4 h-4" />;
+      }
+    }
+    
+    return icon || <Cpu className="w-4 h-4" />;
   };
 
   const getTemplateColor = (templateId: string) => {
@@ -79,7 +102,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            <div className="text-4xl mb-2">💬</div>
+            <MessageCircle className="w-16 h-16 text-gray-400 mb-2" />
             <p className="text-sm">No conversations yet</p>
             <p className="text-xs mt-1">Create your first chat to get started</p>
           </div>

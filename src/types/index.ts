@@ -87,13 +87,40 @@ export interface Conversation {
   isActive: boolean;
 }
 
+export interface Citation {
+  id: string;
+  type: 'web' | 'document' | 'pdf';
+  title: string;
+  url?: string;
+  documentId?: string;
+  documentName?: string;
+  pageNumber?: number;
+  excerpt: string;
+  relevanceScore?: number;
+  timestamp: Date;
+}
+
+export interface CitationReference {
+  citationId: string;
+  startIndex: number;
+  endIndex: number;
+  text: string;
+}
+
 export interface Message {
   id: string;
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  role: 'user' | 'assistant';
   timestamp: Date;
   tokens?: number;
   modelUsed?: string;
+  citations?: Citation[];
+  citationReferences?: CitationReference[];
+  fallbackInfo?: {
+    originalModel: string;
+    fallbackModel: string;
+    reason: string;
+  };
   attachments?: any[];
 }
 
