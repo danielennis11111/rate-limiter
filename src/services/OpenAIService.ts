@@ -87,7 +87,6 @@ export class OpenAIService {
         systemPrompt,
         temperature = 0.7,
         maxTokens = 4000,
-        stream = false,
         ragContext
       } = options;
 

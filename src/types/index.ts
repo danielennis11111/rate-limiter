@@ -72,6 +72,7 @@ export interface ConversationTemplate {
     iterativeDevelopment?: boolean;
     dataAnalysis?: boolean;
     algorithmTesting?: boolean;
+    voicePersona?: string;
   };
 }
 

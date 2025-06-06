@@ -6,6 +6,7 @@ import { ConversationManager } from '../services/ConversationManager';
 import { ModelManager } from '../services/ModelManager';
 import { PDFProcessor } from '../utils/pdfProcessor';
 import AIServiceRouter from '../services/AIServiceRouter';
+import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
 import { estimateTokenCount } from '../utils/mockData';
 import TokenUsagePreview from './TokenUsagePreview';
 
@@ -57,6 +58,15 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const aiService = new AIServiceRouter();
+  
+  // Initialize OpenAI Voice Service with API key
+  const voiceService = (() => {
+    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
+    if (apiKey && apiKey !== 'your_openai_api_key_here') {
+      return new OpenAIVoiceService({ apiKey });
+    }
+    return null;
+  })();
   // const pdfProcessor = new PDFProcessor(); // Currently unused
   
   // Voice recognition setup
@@ -150,81 +160,50 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     }
   };
 
-  const speakText = (text: string, isAIResponse: boolean = false) => {
-    // ONLY speak AI responses, not user input
-    if (!synthesis.current || !text || !isAIResponse) return;
+  const speakText = async (text: string, isAIResponse: boolean = false) => {
+    // 🎙️ ONLY speak AI responses using magical OpenAI voices
+    if (!text || !isAIResponse || !voiceService) return;
 
-    // Cancel any ongoing speech
-    synthesis.current.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Enhanced settings for more natural, human-like voice
-    utterance.rate = 0.85; // Slightly slower for clarity and naturalness
-    utterance.pitch = 1.1; // Slightly higher for friendliness
-    utterance.volume = 0.9; // Comfortable volume
-    
-    // Advanced voice selection for maximum realism
-    const voices = synthesis.current.getVoices();
-    
-    // Priority list of most natural-sounding voices
-    const preferredVoices = [
-      // macOS high-quality voices
-      'Samantha', 'Alex', 'Victoria', 'Allison', 'Ava', 'Susan', 'Fiona',
-      // Windows/Edge natural voices
-      'Microsoft Zira', 'Microsoft Hazel', 'Microsoft Eva',
-      // Google Chrome enhanced voices
-      'Google UK English Female', 'Google US English',
-      // iOS Safari voices
-      'native'
-    ];
-    
-    let selectedVoice = null;
-    
-    // Find the best available voice in priority order
-    for (const preferred of preferredVoices) {
-      selectedVoice = voices.find(voice => 
-        voice.name.includes(preferred) && 
-        (voice.lang.startsWith('en-') || voice.lang === 'en') &&
-        !voice.name.toLowerCase().includes('espeak') // Avoid robotic voices
-      );
-      if (selectedVoice) break;
-    }
-    
-    // Fallback to any quality English voice
-    if (!selectedVoice) {
-      selectedVoice = voices.find(voice => 
-        voice.lang.startsWith('en-') && 
-        voice.localService && // Prefer local over network voices for quality
-        !voice.name.toLowerCase().includes('espeak')
-      ) || voices.find(voice => 
-        (voice.lang.startsWith('en-') || voice.lang === 'en') &&
-        !voice.name.toLowerCase().includes('espeak')
-      );
-    }
-    
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      console.log(`🎤 I'm using voice: ${selectedVoice.name} (${selectedVoice.lang}) for natural speech`);
+    // Stop any existing speech (fallback to synthesis for compatibility)
+    if (synthesis.current) {
+      synthesis.current.cancel();
     }
 
-    utterance.onstart = () => {
-      setVoiceStatus(prev => ({ ...prev, isSpeaking: true }));
-    };
-    
-    utterance.onend = () => {
-      setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
-    };
-    
-    utterance.onerror = () => {
+    try {
+      // 🎵 Use OpenAI's magical voice service with persona-specific voices
+      await voiceService.playText(
+        text,
+        template.persona, // Use the persona (Michael Crow, Elizabeth Reilley, etc.)
+        () => {
+          // On speech start
+          setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
+          console.log(`🎙️ ${template.persona}: Speaking with OpenAI voice...`);
+        },
+        () => {
+          // On speech end
+          setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
+          console.log(`✅ ${template.persona}: Finished speaking`);
+        },
+        (error: Error) => {
+          // On error
+          setVoiceStatus(prev => ({ 
+            ...prev, 
+            isSpeaking: false, 
+            error: `Voice error: ${error.message}` 
+          }));
+          console.error(`❌ ${template.persona}: Voice error:`, error);
+        }
+      );
+    } catch (error) {
+      console.error('🚨 OpenAI Voice Service failed:', error);
+      
+      // Graceful fallback: no voice rather than synthetic
       setVoiceStatus(prev => ({ 
         ...prev, 
         isSpeaking: false, 
-        error: 'Speech synthesis error' 
+        error: 'OpenAI voice service unavailable' 
       }));
-    };
-    
-    synthesis.current.speak(utterance);
+    }
   };
 
   const stopSpeaking = () => {

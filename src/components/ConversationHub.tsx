@@ -6,6 +6,8 @@ import ConversationSidebar from './ConversationSidebar';
 import ConversationView from './ConversationView';
 import ModelStatusBar from './ModelStatusBar';
 import TemplateSelector from './TemplateSelector';
+import SpecialProjects from './SpecialProjects';
+import { specialProjects } from '../data/specialProjects';
 
 interface ConversationHubProps {
   // Future props for integration
@@ -20,6 +22,7 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
   const [templates, setTemplates] = useState<ConversationTemplate[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showSpecialProjects, setShowSpecialProjects] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -53,8 +56,40 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
     setConversations(conversationManager.getAllConversations());
     setActiveConversation(conversationManager.getActiveConversation());
     setShowTemplateSelector(false);
+    setShowSpecialProjects(false);
     
     // Close sidebar on mobile after creating conversation
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const handleSelectSpecialProject = (template: ConversationTemplate) => {
+    // Create conversation using the special project template directly
+    const conversationId = Date.now().toString();
+    const conversation: Conversation = {
+      id: conversationId,
+      templateId: template.id,
+      messages: [],
+      title: template.name,
+      lastUpdated: new Date(),
+      isActive: true
+    };
+
+    // Manually add the conversation since the template might not be in the manager
+    conversationManager['conversations'].set(conversationId, conversation);
+    if (conversationManager['activeConversationId']) {
+      const prevConversation = conversationManager['conversations'].get(conversationManager['activeConversationId']);
+      if (prevConversation) {
+        prevConversation.isActive = false;
+      }
+    }
+    conversationManager['activeConversationId'] = conversationId;
+    
+    setConversations(conversationManager.getAllConversations());
+    setActiveConversation(conversation);
+    setShowSpecialProjects(false);
+    
     if (isMobile) {
       setIsSidebarOpen(false);
     }
@@ -143,7 +178,11 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
           {activeConversation ? (
             <ConversationView
               conversation={activeConversation}
-              template={templates.find(t => t.id === activeConversation.templateId)!}
+              template={
+                templates.find(t => t.id === activeConversation.templateId) ||
+                specialProjects.find(t => t.id === activeConversation.templateId) ||
+                templates[0]
+              }
               conversationManager={conversationManager}
               modelManager={modelManager}
               onConversationUpdate={() => {
@@ -184,12 +223,20 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
                   </div>
                 </div>
                 
-                <button
-                  onClick={() => setShowTemplateSelector(true)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 text-lg font-semibold shadow-lg"
-                >
-                  🌟 Begin Your AI Adventure
-                </button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={() => setShowSpecialProjects(true)}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 text-lg font-semibold shadow-lg"
+                  >
+                    🚀 Superhuman AI Projects
+                  </button>
+                  <button
+                    onClick={() => setShowTemplateSelector(true)}
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-8 py-4 rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all transform hover:scale-105 text-lg font-semibold shadow-lg"
+                  >
+                    🌟 Standard Templates
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -204,6 +251,21 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
           onSelectTemplate={handleCreateConversation}
           onClose={() => setShowTemplateSelector(false)}
         />
+      )}
+
+      {/* Special Projects Modal */}
+      {showSpecialProjects && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-7xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setShowSpecialProjects(false)}
+              className="absolute top-6 right-6 text-gray-500 hover:text-gray-700 text-2xl z-10"
+            >
+              ✕
+            </button>
+            <SpecialProjects onSelectProject={handleSelectSpecialProject} />
+          </div>
+        </div>
       )}
     </div>
   );

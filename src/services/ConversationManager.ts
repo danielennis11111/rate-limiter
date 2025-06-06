@@ -1,5 +1,5 @@
 import { Conversation, ConversationTemplate, Message } from '../types/index';
-import { conversationTemplates } from '../data/conversationTemplates';
+import { ultimateTemplates } from '../data/ultimateTemplates';
 
 export class ConversationManager {
   private conversations: Map<string, Conversation> = new Map();
@@ -11,7 +11,7 @@ export class ConversationManager {
   }
 
   private initializeTemplates(): void {
-    conversationTemplates.forEach(template => {
+    ultimateTemplates.forEach(template => {
       this.templates.set(template.id, template);
     });
   }
