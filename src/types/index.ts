@@ -38,6 +38,15 @@ export interface ConversationTemplate {
     imageTokenRatio?: string;
     edgeOptimized?: boolean;
     privacyFocused?: boolean;
+    ultraLongContext?: boolean;
+    beatsGPT4o?: boolean;
+    industryLeading?: boolean;
+    safetyFocused?: boolean;
+    contentModeration?: boolean;
+    researchFocused?: boolean;
+    scientificRigor?: boolean;
+    professionalVision?: boolean;
+    scientificImaging?: boolean;
   };
 }
 
