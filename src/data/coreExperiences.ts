@@ -439,7 +439,7 @@ What would you like to explore with your local AI assistant?`,
     name: 'Virtual Avatar Builder',
     persona: 'AI Avatar Expert',
     description: 'Build talking head avatars with Hugging Face models and local Llama integration for personalized AI experiences.',
-    modelId: 'llama3.1:8b',
+    modelId: 'Llama-4-Scout-17B-16E-Instruct',
     icon: '🤗',
     color: 'bg-gradient-to-r from-yellow-500 to-orange-500',
     systemPrompt: `I'm your AI Avatar Expert, and I'm passionate about helping you create personalized talking head avatars using cutting-edge Hugging Face models combined with local Llama intelligence!

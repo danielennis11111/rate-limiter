@@ -155,24 +155,24 @@ export class ModelManager {
         isMultimodal: false
       },
       
-      // 🦙 Llama 4 Models (Meta's Latest)
+      // 🦙 Llama 4 Models (Meta's Latest) - Downloaded via llama-stack
       {
-        id: 'llama4-scout',
-        name: 'Llama 4 Scout',
-        description: 'Latest from Meta - efficient reasoning and conversation',
+        id: 'Llama-4-Scout-17B-16E-Instruct',
+        name: 'Llama 4 Scout 17B (✅ Downloaded)',
+        description: 'Advanced reasoning model with 10M+ context - perfect for complex avatar conversations',
         status: 'offline',
-        capabilities: ['reasoning', 'conversation', 'planning', 'efficiency'],
-        maxTokens: 128000,
+        capabilities: ['advanced-reasoning', 'long-context', 'conversation', 'planning', 'avatar-intelligence'],
+        maxTokens: 10485760, // 10M+ tokens
         isMultimodal: false
       },
       {
-        id: 'llama4',
-        name: 'Llama 4',
-        description: 'Meta\'s flagship model - advanced reasoning and capabilities',
+        id: 'Llama-4-Maverick-17B-128E-Instruct',
+        name: 'Llama 4 Maverick 17B (🔄 Downloading)',
+        description: 'Faster processing model with 1M context - optimized for real-time avatar responses',
         status: 'offline',
-        capabilities: ['advanced-reasoning', 'conversation', 'planning', 'multimodal'],
-        maxTokens: 128000,
-        isMultimodal: true
+        capabilities: ['fast-processing', 'conversation', 'planning', 'efficiency', 'real-time'],
+        maxTokens: 1048576, // 1M tokens
+        isMultimodal: false
       }
     ];
 
