@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/rate-limiter/static/css/main.ae21afdd.css",
-    "main.js": "/rate-limiter/static/js/main.f4577964.js",
+    "main.css": "/rate-limiter/static/css/main.54d2588e.css",
+    "main.js": "/rate-limiter/static/js/main.561eedbe.js",
     "index.html": "/rate-limiter/index.html",
-    "main.ae21afdd.css.map": "/rate-limiter/static/css/main.ae21afdd.css.map",
-    "main.f4577964.js.map": "/rate-limiter/static/js/main.f4577964.js.map"
+    "main.54d2588e.css.map": "/rate-limiter/static/css/main.54d2588e.css.map",
+    "main.561eedbe.js.map": "/rate-limiter/static/js/main.561eedbe.js.map"
   },
   "entrypoints": [
-    "static/css/main.ae21afdd.css",
-    "static/js/main.f4577964.js"
+    "static/css/main.54d2588e.css",
+    "static/js/main.561eedbe.js"
   ]
 }
