@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ConversationTemplate, Conversation } from '../types/index';
+import { MODEL_LIMITS, estimateTokenCount } from '../utils/tokenCounter';
 
 interface TokenUsagePreviewProps {
   conversation: Conversation;
   template: ConversationTemplate;
   currentInput: string;
+  currentModelId?: string;
 }
 
 interface TokenUsage {
@@ -27,12 +29,20 @@ interface TokenUsage {
 const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
   conversation,
   template,
-  currentInput
+  currentInput,
+  currentModelId
 }) => {
+  // Get actual model context window
+  const getModelContextWindow = (): number => {
+    const modelId = currentModelId || template.modelId;
+    const modelLimits = MODEL_LIMITS[modelId];
+    return modelLimits?.contextWindow || template.features.contextLength || 128000;
+  };
+
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
     used: 0,
-    total: template.features.contextLength,
-    remaining: template.features.contextLength,
+    total: getModelContextWindow(),
+    remaining: getModelContextWindow(),
     percentage: 0,
     breakdown: {
       systemInstructions: 0,
@@ -44,27 +54,26 @@ const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Estimate token count (rough approximation: 4 chars = 1 token)
-  const estimateTokens = (text: string): number => {
-    return Math.ceil(text.length / 4);
-  };
-
-  // Calculate token usage
+  // Calculate token usage using real model specs
   useEffect(() => {
-    const systemTokens = estimateTokens(template.systemPrompt || '');
+    const modelId = currentModelId || template.modelId;
+    const contextWindow = getModelContextWindow();
+    const modelLimits = MODEL_LIMITS[modelId];
+    
+    const systemTokens = estimateTokenCount(template.systemPrompt || '');
     const historyTokens = conversation.messages.reduce((sum, msg) => 
-      sum + (msg.tokens || estimateTokens(msg.content)), 0
+      sum + (msg.tokens || estimateTokenCount(msg.content)), 0
     );
-    const currentTokens = estimateTokens(currentInput);
-    const expectedResponseTokens = template.parameters.maxTokens || 2000;
+    const currentTokens = estimateTokenCount(currentInput);
+    const expectedResponseTokens = modelLimits?.maxOutput || template.parameters.maxTokens || 2000;
 
     const totalUsed = systemTokens + historyTokens + currentTokens;
-    const remaining = Math.max(0, template.features.contextLength - totalUsed - expectedResponseTokens);
-    const percentage = Math.round((totalUsed / template.features.contextLength) * 100);
+    const remaining = Math.max(0, contextWindow - totalUsed - expectedResponseTokens);
+    const percentage = Math.round((totalUsed / contextWindow) * 100);
 
     setTokenUsage({
       used: totalUsed,
-      total: template.features.contextLength,
+      total: contextWindow,
       remaining,
       percentage,
       breakdown: {
@@ -74,7 +83,7 @@ const TokenUsagePreview: React.FC<TokenUsagePreviewProps> = ({
         expectedResponse: expectedResponseTokens
       }
     });
-  }, [conversation.messages, template, currentInput]);
+  }, [conversation.messages, template, currentInput, currentModelId]);
 
   const getUsageColor = () => {
     if (tokenUsage.percentage < 50) return 'text-green-600';

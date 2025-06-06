@@ -34,9 +34,9 @@ export class LlamaStackService {
   private async checkAvailableModels(): Promise<void> {
     try {
       // Known downloaded models (based on user confirmation)
-      this.availableModels.set('Llama-4-Scout-17B-16E-Instruct', true);   // 2.7GB - downloaded
-      this.availableModels.set('Llama3.2-3B-Instruct', true);             // 799MB - downloaded
-      this.availableModels.set('Llama-4-Maverick-17B-128E-Instruct', false); // Empty folder
+      this.availableModels.set('llama4-scout', true);       // Official Llama 4 Scout (CLI)
+      this.availableModels.set('llama4-maverick', true);    // Official Llama 4 Maverick (Ollama API)
+      this.availableModels.set('Llama3.2-3B-Instruct', true); // Legacy support
       
       console.log('🦙 Llama Stack models available:', Array.from(this.availableModels.entries()));
     } catch (error) {
@@ -142,7 +142,7 @@ export class LlamaStackService {
    */
   async *streamMessage(
     messages: LlamaStackMessage[],
-    modelId: string = 'Llama-4-Scout-17B-16E-Instruct',
+    modelId: string = 'llama4-scout',
     options: {
       maxTokens?: number;
       temperature?: number;
@@ -186,12 +186,19 @@ export class LlamaStackService {
     }
 
     switch (modelId) {
-      case 'Llama-4-Scout-17B-16E-Instruct':
+      case 'llama4-scout':
         return {
           name: 'Llama 4 Scout',
-          contextWindow: 10240000, // 10M+ tokens
-          size: '2.7GB',
-          description: 'Advanced reasoning model with massive context window'
+          contextWindow: 10485760, // Official: 10M tokens
+          size: '65GB',
+          description: 'Official Llama 4 Scout with CLI interface and 10M token context window'
+        };
+      case 'llama4-maverick':
+        return {
+          name: 'Llama 4 Maverick',
+          contextWindow: 1048576, // Official: 1M tokens
+          size: '65GB',
+          description: 'Official Llama 4 Maverick with Ollama API and 1M token context window'
         };
       case 'Llama3.2-3B-Instruct':
         return {
@@ -199,13 +206,6 @@ export class LlamaStackService {
           contextWindow: 128000, // 128K tokens
           size: '799MB',
           description: 'Efficient instruction-following model for general tasks'
-        };
-      case 'Llama-4-Maverick-17B-128E-Instruct':
-        return {
-          name: 'Llama 4 Maverick',
-          contextWindow: 1024000, // 1M tokens  
-          size: 'Not downloaded',
-          description: 'Fast processing model for real-time responses'
         };
       default:
         return null;

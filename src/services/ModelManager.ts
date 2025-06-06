@@ -155,14 +155,23 @@ export class ModelManager {
         isMultimodal: false
       },
       
-      // 🦙 Llama 4 Models (Meta's Latest) - Downloaded via llama-stack
+      // 🦙 Llama 4 Models (Meta's Official) - Available via backend
       {
-        id: 'Llama-4-Scout-17B-16E-Instruct',
-        name: 'Llama 4 Scout 17B (✅ Downloaded)',
-        description: 'Advanced reasoning model with 10M+ context - perfect for complex avatar conversations',
+        id: 'llama4-scout',
+        name: 'Llama 4 Scout (CLI)',
+        description: 'Official Llama 4 Scout with CLI interface for advanced reasoning',
         status: 'offline',
-        capabilities: ['advanced-reasoning', 'long-context', 'conversation', 'planning', 'avatar-intelligence'],
-        maxTokens: 10485760, // 10M+ tokens
+        capabilities: ['advanced-reasoning', 'cli-interface', 'conversation', 'planning', 'debugging'],
+        maxTokens: 131072,
+        isMultimodal: false
+      },
+      {
+        id: 'llama4-maverick',
+        name: 'Llama 4 Maverick (API)',
+        description: 'Official Llama 4 Maverick with Ollama API for fast processing',
+        status: 'offline',
+        capabilities: ['fast-processing', 'api-interface', 'conversation', 'real-time', 'production'],
+        maxTokens: 131072,
         isMultimodal: false
       },
       {
@@ -176,8 +185,8 @@ export class ModelManager {
       },
       {
         id: 'Llama-4-Maverick-17B-128E-Instruct',
-        name: 'Llama 4 Maverick 17B (❌ Pending)',
-        description: 'Faster processing model with 1M context - download pending (842GB required)',
+        name: 'Llama 4 Maverick 17B (✅ Downloaded)',
+        description: 'Faster processing model with 1M context - locally available for real-time conversations',
         status: 'offline',
         capabilities: ['fast-processing', 'conversation', 'planning', 'efficiency', 'real-time'],
         maxTokens: 1048576, // 1M tokens
@@ -471,8 +480,9 @@ export class ModelManager {
       
       // Check for known downloaded models based on user confirmation
       const knownLocalModels = [
-        'Llama-4-Scout-17B-16E-Instruct', // 2.7GB - confirmed downloaded
-        'Llama3.2-3B-Instruct' // 799MB - confirmed downloaded
+        'llama4-scout', // Official Llama 4 Scout (CLI) - confirmed downloaded
+        'Llama3.2-3B-Instruct', // 799MB - confirmed downloaded
+                  'llama4-maverick' // Official Llama 4 Maverick (Ollama) - confirmed downloaded
       ];
       
       const isAvailable = knownLocalModels.includes(modelId);

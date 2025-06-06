@@ -49,13 +49,18 @@ export const MODEL_LIMITS: Record<string, ModelTokenLimits> = {
   },
   
   // Llama Models (local)
-  'llama3.1:8b': {
-    contextWindow: 131072, // 128K tokens
-    maxOutput: 4096,
+  'llama4-scout': {
+    contextWindow: 10485760, // Official: 10M tokens - Enhanced reasoning model
+    maxOutput: 8192, // Higher output for complex reasoning
     pricing: { input: 0, output: 0 } // Local = free
   },
   'llama3.2:3b': {
     contextWindow: 131072, // 128K tokens  
+    maxOutput: 4096,
+    pricing: { input: 0, output: 0 } // Local = free
+  },
+  'llama3.1:8b': {
+    contextWindow: 131072, // 128K tokens
     maxOutput: 4096,
     pricing: { input: 0, output: 0 } // Local = free
   }

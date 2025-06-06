@@ -28,6 +28,7 @@ export class LocalTTSService {
   private config: LocalTTSConfig;
   private isInitialized: boolean = false;
   private worker: Worker | null = null;
+  private ttsModel: any = null;
 
   // Voice profiles mapped to local TTS voices
   private static readonly LOCAL_VOICE_PROFILES: Record<string, LocalTTSConfig> = {
@@ -167,13 +168,13 @@ export class LocalTTSService {
           ttsVoice: profile.voiceId || 'local',
           personality: 'Local AI',
           useCase: ['local', 'privacy-first'],
-          llamaModel: 'Llama-4-Scout-17B-16E-Instruct',
+          llamaModel: 'llama4-scout',
           voiceSpeed: profile.speed || 1.0,
           emotionalRange: emotionalTags
         },
         emotionalTags,
         synthesisTime,
-        llamaModel: 'Llama-4-Scout-17B-16E-Instruct'
+                  llamaModel: 'llama4-scout'
       };
 
     } catch (error) {
@@ -188,17 +189,29 @@ export class LocalTTSService {
   private async initializeBark(): Promise<void> {
     console.log('🐕 Loading Bark TTS model...');
     
-    // For browser implementation, we would use transformers.js or a Bark web worker
-    // This is a placeholder for the actual implementation
-    const barkScript = document.createElement('script');
-    barkScript.src = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@2.6.0/dist/transformers.min.js';
-    document.head.appendChild(barkScript);
-    
-    await new Promise((resolve) => {
-      barkScript.onload = resolve;
-    });
-    
-    console.log('🐕 Bark TTS ready');
+    try {
+      // Dynamic import of transformers.js
+      const { pipeline, env } = await import('@huggingface/transformers');
+      
+      // Configure transformers.js for browser use
+      env.allowRemoteModels = true;
+      env.allowLocalModels = true;
+      
+      // Initialize Bark TTS pipeline
+      console.log('🐕 Downloading Bark model (this may take a few minutes on first run)...');
+      this.ttsModel = await pipeline('text-to-speech', 'Xenova/bark-small', {
+        progress_callback: (progress: any) => {
+          if (progress.status === 'downloading') {
+            console.log(`🐕 Downloading ${progress.name}: ${Math.round(progress.progress || 0)}%`);
+          }
+        }
+      } as any);
+      
+      console.log('🐕 Bark TTS ready!');
+    } catch (error) {
+      console.error('❌ Failed to initialize Bark TTS:', error);
+      throw error;
+    }
   }
 
   /**
@@ -232,24 +245,55 @@ export class LocalTTSService {
    * Generate speech with Bark
    */
   private async generateWithBark(text: string, config: LocalTTSConfig): Promise<LocalTTSResponse> {
-    // Placeholder implementation
-    // In reality, this would use transformers.js to run Bark in the browser
-    
     console.log(`🐕 Bark generating: "${text.substring(0, 50)}..."`);
     
-    // For now, return a mock response until we implement the actual model
-    const mockAudio = this.generateMockAudio(text, 'bark');
-    
-    return {
-      audioBlob: mockAudio.blob,
-      audioUrl: mockAudio.url,
-      metadata: {
-        model: 'bark',
-        voiceId: config.voiceId || 'default',
-        duration: text.length * 0.1, // Rough estimate
-        sampleRate: 24000
+    try {
+      if (!this.ttsModel) {
+        throw new Error('Bark model not initialized');
       }
-    };
+
+      // Generate speech with Bark
+      const result = await this.ttsModel(text, {
+        speaker_id: config.voiceId || 'v2/en_speaker_6'
+      });
+
+      // Convert the result to audio blob
+      const audioData = result.audio;
+      const sampleRate = result.sampling_rate || 24000;
+      
+      // Create WAV file from audio data
+      const audioBlob = this.createWAVBlob(audioData, sampleRate);
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      console.log(`✅ Bark generated ${audioData.length} samples at ${sampleRate}Hz`);
+
+      return {
+        audioBlob,
+        audioUrl,
+        metadata: {
+          model: 'bark',
+          voiceId: config.voiceId || 'default',
+          duration: audioData.length / sampleRate,
+          sampleRate
+        }
+      };
+
+    } catch (error) {
+      console.warn('🐕 Bark generation failed, using fallback:', error);
+      
+      // Fallback to mock audio if Bark fails
+      const mockAudio = this.generateMockAudio(text, 'bark');
+      return {
+        audioBlob: mockAudio.blob,
+        audioUrl: mockAudio.url,
+        metadata: {
+          model: 'bark-fallback',
+          voiceId: config.voiceId || 'default',
+          duration: text.length * 0.1,
+          sampleRate: 24000
+        }
+      };
+    }
   }
 
   /**
@@ -310,6 +354,44 @@ export class LocalTTSService {
         sampleRate: 22050
       }
     };
+  }
+
+  /**
+   * Create WAV blob from audio data
+   */
+  private createWAVBlob(audioData: Float32Array, sampleRate: number): Blob {
+    const length = audioData.length;
+    const buffer = new ArrayBuffer(44 + length * 2);
+    const view = new DataView(buffer);
+    
+    // WAV header
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+    
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + length * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, length * 2, true);
+    
+    // Convert float audio data to 16-bit PCM
+    const int16Array = new Int16Array(buffer, 44);
+    for (let i = 0; i < length; i++) {
+      int16Array[i] = Math.max(-32768, Math.min(32767, audioData[i] * 32768));
+    }
+    
+    return new Blob([buffer], { type: 'audio/wav' });
   }
 
   /**

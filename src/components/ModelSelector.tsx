@@ -40,8 +40,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', status: 'checking', contextWindow: 1000000, type: 'gemini' },
     
     // Llama Models (Local)
-    { id: 'llama3.1:8b', name: 'Llama 3.1 8B (Local)', status: 'checking', contextWindow: 131072, type: 'llama' },
-    { id: 'llama3.2:3b', name: 'Llama 3.2 3B (Local)', status: 'checking', contextWindow: 131072, type: 'llama' }
+    { id: 'llama4-scout', name: 'Llama 4 Scout (CLI)', status: 'checking', contextWindow: 10485760, type: 'llama' },
+    { id: 'llama4-maverick', name: 'Llama 4 Maverick (Ollama)', status: 'checking', contextWindow: 1048576, type: 'llama' },
+    { id: 'llama3.2:3b', name: 'Llama 3.2 3B (Local)', status: 'checking', contextWindow: 131072, type: 'llama' },
+    { id: 'llama3.1:8b', name: 'Llama 3.1 8B (Local)', status: 'checking', contextWindow: 131072, type: 'llama' }
   ];
 
   useEffect(() => {

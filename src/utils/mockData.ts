@@ -100,17 +100,17 @@ export const mockConversations: Conversation[] = [
 export const availableModels: ModelInfo[] = [
   // Llama 4 Models (newest and most powerful)
   {
-    name: 'Llama-4-Scout-17B-16E-Instruct',
-    maxContextTokens: 10240000, // 10M tokens!
-    description: 'Llama 4 Scout with massive 10M token context',
+    name: 'llama4-scout',
+    maxContextTokens: 10485760, // Official: 10M tokens
+    description: 'Official Llama 4 Scout via CLI interface - 10M token context window',
     costPer1kTokens: 0, // Local model
     supportsCompression: true,
-    emergencyFallback: 'Llama3.2-3B-Instruct'
+    emergencyFallback: 'llama4-maverick'
   },
   {
-    name: 'Llama-4-Maverick-17B-128E-Instruct', 
-    maxContextTokens: 1024000, // 1M tokens
-    description: 'Llama 4 Maverick for complex reasoning',
+    name: 'llama4-maverick', 
+    maxContextTokens: 1048576, // Official: 1M tokens
+    description: 'Official Llama 4 Maverick via Ollama API - 1M token context window',
     costPer1kTokens: 0, // Local model
     supportsCompression: true,
     emergencyFallback: 'Llama3.2-3B-Instruct'

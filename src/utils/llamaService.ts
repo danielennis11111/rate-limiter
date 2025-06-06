@@ -224,30 +224,30 @@ To get real AI-powered responses, please start the Llama Stack server with one o
       'Llama3.2-3B-Instruct': {
         name: 'Llama3.2-3B-Instruct',
         displayName: 'Llama 3.2 (3B) via Ollama',
-        contextWindow: 128000,
+        contextWindow: 128000, // Official: 128K tokens
         description: 'Fast, efficient model running locally via Ollama',
         capabilities: ['text', 'conversation', 'fast-response', 'local']
       },
       'Llama3.2-11B-Vision-Instruct': {
         name: 'Llama3.2-11B-Vision-Instruct',
         displayName: 'Llama 3.2 Vision (11B) via Ollama',
-        contextWindow: 128000,
+        contextWindow: 128000, // Official: 128K tokens
         description: 'Multimodal model (requires download via Ollama)',
         capabilities: ['text', 'vision', 'multimodal', 'image-analysis', 'local']
       },
-      'Llama-4-Scout-17B-16E-Instruct': {
-        name: 'Llama-4-Scout-17B-16E-Instruct',
-        displayName: 'Llama 4 Scout (via Ollama)',
-        contextWindow: 128000, // Ollama context limit
-        description: 'Latest Llama 4 model (requires download via Ollama)',
-        capabilities: ['text', 'reasoning', 'analysis', 'local']
+      'llama4-scout': {
+        name: 'llama4-scout',
+        displayName: 'Llama 4 Scout (CLI)',
+        contextWindow: 10485760, // Official: 10M tokens (10,485,760)
+        description: 'Official Llama 4 Scout via CLI - 10M token context window',
+        capabilities: ['text', 'reasoning', 'analysis', 'local', 'cli']
       },
-      'Llama-4-Maverick-17B-128E-Instruct': {
-        name: 'Llama-4-Maverick-17B-128E-Instruct',
-        displayName: 'Llama 4 Maverick (via Ollama)',
-        contextWindow: 128000, // Ollama context limit
-        description: 'Advanced Llama 4 model (requires download via Ollama)',
-        capabilities: ['text', 'reasoning', 'analysis', 'local']
+      'llama4-maverick': {
+        name: 'llama4-maverick',
+        displayName: 'Llama 4 Maverick (Ollama API)',
+        contextWindow: 1048576, // Official: 1M tokens (1,048,576)
+        description: 'Official Llama 4 Maverick via Ollama API - 1M token context window',
+        capabilities: ['text', 'reasoning', 'analysis', 'local', 'api']
       }
     };
 

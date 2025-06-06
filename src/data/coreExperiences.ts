@@ -158,10 +158,10 @@ What would you like to explore together?`,
       multimodal: true,
       toolCalling: true,
       streamingEnabled: true,
-      contextLength: 128000,
+      contextLength: 128000, // GPT-4o: 128K tokens (official)
       voicePersona: 'onyx',
       modelSwitching: true,
-      availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama3.1:8b']
+      availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama4-scout']
     }
   },
 
@@ -226,10 +226,10 @@ What would you like to plan or design together?`,
       multimodal: true,
       toolCalling: true,
       streamingEnabled: true,
-      contextLength: 1000000,
+      contextLength: 1048576, // Gemini 2.0 Flash: 1M tokens (official)
       voicePersona: 'nova',
       modelSwitching: true,
-      availableModels: ['gemini-2.0-flash', 'gpt-4o', 'gpt-4o-mini', 'llama3.1:8b']
+      availableModels: ['gemini-2.0-flash', 'gpt-4o', 'gpt-4o-mini', 'llama4-scout']
     }
   },
 
@@ -296,11 +296,11 @@ What coding challenge can I help you tackle today?`,
       multimodal: true,
       toolCalling: true,
       streamingEnabled: true,
-      contextLength: 128000,
+      contextLength: 128000, // GPT-4o: 128K tokens (official)
       codeExecution: true,
       voicePersona: 'echo',
       modelSwitching: true,
-      availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama3.1:8b']
+      availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama4-scout']
     }
   },
 
@@ -367,7 +367,7 @@ What learning goal can I help you achieve?`,
       multimodal: true,
       toolCalling: true,
       streamingEnabled: true,
-      contextLength: 128000,
+      contextLength: 128000, // GPT-4o: 128K tokens (official)
       voicePersona: 'shimmer',
       modelSwitching: true,
       availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama3.2:3b']
@@ -427,21 +427,21 @@ What would you like to explore with your local AI assistant?`,
       multimodal: false,
       toolCalling: false,
       streamingEnabled: true,
-      contextLength: 128000,
+      contextLength: 128000, // Llama 3.2: 128K tokens (official)
       voicePersona: 'alloy',
       modelSwitching: true,
-      availableModels: ['Llama-4-Scout-17B-16E-Instruct', 'Llama3.2-3B-Instruct', 'gpt-4o', 'gemini-2.0-flash']
+      availableModels: ['llama4-scout', 'llama4-maverick', 'gpt-4o', 'gemini-2.0-flash']
     }
   },
 
   {
-    id: 'virtual-avatar-builder',
-    name: 'Virtual Avatar Builder',
-    persona: 'AI Avatar Expert',
-    description: 'Build talking head avatars with Hugging Face models and local Llama integration for personalized AI experiences.',
-    modelId: 'Llama-4-Scout-17B-16E-Instruct',
-    icon: '🤗',
-    color: 'bg-gradient-to-r from-yellow-500 to-orange-500',
+    id: 'local-environment-builder',
+    name: 'Local Environment Builder',
+    persona: 'Local AI Development Assistant',
+    description: 'Plan, setup, and manage local AI extensions with embedded terminal and voice guidance - no technical expertise required.',
+    modelId: 'llama4-scout',
+    icon: '🛠️',
+    color: 'bg-gradient-to-r from-purple-500 to-blue-500',
     systemPrompt: `I'm Scout, your AI Avatar Expert powered by Llama 4 Scout advanced reasoning! I'm passionate about helping you create personalized talking head avatars using cutting-edge AI technology with intelligent voice adaptation.
 
 ## 🎭 **Enhanced Avatar Voice System**

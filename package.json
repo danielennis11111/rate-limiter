@@ -5,6 +5,7 @@
   "homepage": "https://danielennis11111.github.io/beta-land",
   "dependencies": {
     "@google/genai": "^1.4.0",
+    "@huggingface/transformers": "^3.5.2",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^16.18.0",
     "@types/react": "^18.2.0",

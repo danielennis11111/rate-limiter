@@ -11,6 +11,8 @@ import { EnhancedRAGProcessor } from '../utils/enhancedRAG';
 import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
 import { AvatarTTSService, AvatarSpeechRequest } from '../services/AvatarTTSService';
 import LocalTTSService from '../services/LocalTTSService';
+import LocalEnvironmentBuilder from './LocalEnvironmentBuilder';
+import { getUnifiedTTS } from '../services/UnifiedTTSService';
 import TokenUsagePreview from './TokenUsagePreview';
 import NotificationSystem, { Notification } from './NotificationSystem';
 import ModelSwitcher from './ModelSwitcher';
@@ -227,141 +229,63 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   };
 
   const speakText = async (text: string, isAIResponse: boolean = false) => {
-    if (!text.trim() || !isAIResponse) return;
+    if (!text.trim()) return;
 
-    // Use Local TTS for Virtual Avatar Builder
-    if (template.id === 'virtual-avatar-builder' && localTTSService.current) {
-      try {
-        setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
-        console.log(`🎭 ${template.persona}: Starting Local Avatar TTS...`);
-
-        const speechRequest: AvatarSpeechRequest = {
-          text: text,
-          context: `${template.persona} response`,
-          emotion: 'neutral',
-          avatarProfile: template.features?.voicePersona || 'scout-friendly'
-        };
-
-        const response = await localTTSService.current.generateAvatarSpeech(speechRequest);
-        
-        console.log(`🎭 Local Avatar TTS: Using ${response.avatarProfile.name} (${response.avatarProfile.ttsVoice})`);
-        console.log(`💭 Emotional tags: ${response.emotionalTags.join(', ')}`);
-
-        // Create audio element and play
-        const audio = new Audio(response.audioUrl);
-        
-        audio.onloadeddata = () => {
-          console.log(`🎭 ${template.persona}: Avatar speech ready to play`);
-        };
-
-        audio.onplay = () => {
-          console.log(`🎭 ${template.persona}: Avatar speaking started`);
-        };
-
-        audio.onended = () => {
-          setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
-          console.log(`✅ ${template.persona}: Avatar finished speaking`);
-          // Clean up the audio URL
-          URL.revokeObjectURL(response.audioUrl);
-        };
-
-        audio.onerror = (event) => {
-          console.error(`❌ ${template.persona}: Avatar speech error:`, event);
-          setVoiceStatus(prev => ({ 
-            ...prev, 
-            isSpeaking: false, 
-            error: 'Avatar voice playback failed' 
-          }));
-          URL.revokeObjectURL(response.audioUrl);
-        };
-
-        await audio.play();
-
-      } catch (error) {
-        console.error('🚨 Avatar TTS failed:', error);
-        setVoiceStatus(prev => ({ 
-          ...prev, 
-          isSpeaking: false, 
-          error: 'Avatar voice not available' 
-        }));
-        
-        // Fallback to browser TTS if Avatar TTS fails
-        console.log('📢 Falling back to browser TTS...');
-        await fallbackToBasicTTS(text);
-      }
-    } else {
-      // Use standard browser TTS for other templates
-      await fallbackToBasicTTS(text);
-    }
-  };
-
-  const fallbackToBasicTTS = async (text: string) => {
     // Stop any existing speech
-    if (synthesis.current) {
-      synthesis.current.cancel();
-    }
+    const unifiedTTS = getUnifiedTTS();
+    unifiedTTS.stopSpeaking();
 
     try {
       setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
-      console.log(`🎙️ ${template.persona}: Starting browser TTS...`);
-
-      const utterance = new SpeechSynthesisUtterance(text);
       
-      // Get available voices and select the best one
-      const voices = synthesis.current?.getVoices() || [];
-      const preferredVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('samantha') || 
-        voice.name.toLowerCase().includes('alex') ||
-        voice.name.toLowerCase().includes('karen') ||
-        voice.name.toLowerCase().includes('daniel')
-      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
+      let result;
+      if (isAIResponse) {
+        console.log(`🎙️ ${template.persona}: Speaking AI response with enhanced TTS...`);
+        result = await unifiedTTS.speakAIResponse(text);
+      } else {
+        console.log(`🎙️ ${template.persona}: Speaking user feedback...`);
+        result = await unifiedTTS.speakUserFeedback(text);
       }
 
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
-      utterance.volume = 0.9;
+      // Log the method used for transparency
+      if (result.method === 'bark') {
+        console.log(`🐕 Using high-quality Bark TTS with ${result.metadata?.voiceId} voice`);
+        addNotification({
+          type: 'success',
+          title: 'Enhanced Voice',
+          message: 'Using enhanced Bark voice synthesis',
+          duration: 2000
+        });
+      } else if (result.method === 'browser') {
+        console.log(`🔊 Using browser TTS fallback with ${result.metadata?.voiceId} voice`);
+      } else {
+        console.warn('⚠️ TTS failed:', result.error);
+      }
 
-      utterance.onstart = () => {
-        console.log(`🎙️ ${template.persona}: Browser speaking started`);
-      };
+      if (!result.success) {
+        throw new Error(result.error || 'TTS failed');
+      }
 
-      utterance.onend = () => {
+      // Handle speech completion
+      const duration = result.metadata?.duration ? result.metadata.duration * 1000 : text.length * 100;
+      setTimeout(() => {
         setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
-        console.log(`✅ ${template.persona}: Browser finished speaking`);
-      };
-
-      utterance.onerror = (event) => {
-        console.error(`❌ ${template.persona}: Browser speech error:`, event);
-        setVoiceStatus(prev => ({ 
-          ...prev, 
-          isSpeaking: false, 
-          error: 'Voice playback failed' 
-        }));
-      };
-
-      synthesis.current?.speak(utterance);
+        console.log(`✅ ${template.persona}: Finished speaking`);
+      }, duration);
 
     } catch (error) {
-      console.error('🚨 Browser TTS failed:', error);
+      console.error('🚨 Enhanced TTS failed:', error);
       setVoiceStatus(prev => ({ 
         ...prev, 
         isSpeaking: false, 
-        error: 'Voice not available' 
+        error: 'Voice synthesis failed' 
       }));
     }
   };
 
   const stopSpeaking = () => {
-    // Stop browser TTS
-    if (synthesis.current) {
-      synthesis.current.cancel();
-    }
-    
-    // Stop Avatar TTS (audio elements will stop automatically when component unmounts or when new audio plays)
-    // For Avatar TTS, we could add a ref to track the current audio element if needed
+    const unifiedTTS = getUnifiedTTS();
+    unifiedTTS.stopSpeaking();
     
     setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
     console.log(`🔇 ${template.persona}: Stopped speaking`);
@@ -796,43 +720,45 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         )}
       </div>
 
-
-
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {conversation.messages.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-gray-400 mb-4">
-              {template.icon.startsWith('http') ? (
-                <img 
-                  src={template.icon} 
-                  alt={template.persona}
-                  className="w-20 h-20 rounded-full border-2 border-gray-200 object-cover mx-auto"
-                />
-              ) : (
-                <span className="text-4xl">{template.icon}</span>
-              )}
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Welcome to {template.name}
-            </h3>
-            <p className="text-gray-600 mb-6">{template.description}</p>
-            
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700">Try these questions:</h4>
-              <div className="grid gap-2 max-w-2xl mx-auto">
-                {template.suggestedQuestions.slice(0, 3).map((question: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => handleQuestionClick(question)}
-                    className="p-3 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
-                  >
-                    {question}
-                  </button>
-                ))}
+          template.id === 'local-environment-builder' ? (
+            <LocalEnvironmentBuilder currentWorkingDirectory="/Users/danielennis/ai-apps/rate limit message" />
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-4">
+                {template.icon.startsWith('http') ? (
+                  <img 
+                    src={template.icon} 
+                    alt={template.persona}
+                    className="w-20 h-20 rounded-full border-2 border-gray-200 object-cover mx-auto"
+                  />
+                ) : (
+                  <span className="text-4xl">{template.icon}</span>
+                )}
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Welcome to {template.name}
+              </h3>
+              <p className="text-gray-600 mb-6">{template.description}</p>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-700">Try these questions:</h4>
+                <div className="grid gap-2 max-w-2xl mx-auto">
+                  {template.suggestedQuestions.slice(0, 3).map((question: string, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => handleQuestionClick(question)}
+                      className="p-3 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )
         ) : (
           conversation.messages.map((message) => (
             <div
@@ -917,6 +843,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           conversation={conversation}
           template={template}
           currentInput={input}
+          currentModelId={currentModelId}
         />
       </div>
 

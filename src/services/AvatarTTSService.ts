@@ -46,7 +46,7 @@ export class AvatarTTSService {
       ttsVoice: 'onyx',
       personality: 'Professional, confident, analytical',
       useCase: ['business', 'analysis', 'technical', 'reasoning'],
-      llamaModel: 'Llama-4-Scout-17B-16E-Instruct',
+      llamaModel: 'llama4-scout',
       voiceSpeed: 0.9,
       emotionalRange: ['professional', 'authoritative', 'calm']
     },
@@ -57,7 +57,7 @@ export class AvatarTTSService {
       ttsVoice: 'alloy',
       personality: 'Friendly, helpful, engaging',
       useCase: ['conversation', 'teaching', 'guidance', 'support'],
-      llamaModel: 'Llama-4-Scout-17B-16E-Instruct',
+      llamaModel: 'llama4-scout',
       voiceSpeed: 1.0,
       emotionalRange: ['friendly', 'excited', 'calm', 'neutral']
     },
@@ -68,7 +68,7 @@ export class AvatarTTSService {
       ttsVoice: 'fable',
       personality: 'Narrative, expressive, captivating',
       useCase: ['storytelling', 'explanations', 'creative', 'educational'],
-      llamaModel: 'Llama-4-Scout-17B-16E-Instruct',
+      llamaModel: 'llama4-scout',
       voiceSpeed: 0.95,
       emotionalRange: ['excited', 'friendly', 'neutral']
     },
