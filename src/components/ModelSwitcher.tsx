@@ -27,6 +27,19 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   
   const currentModel = models.find(m => m.id === currentModelId) || models[0];
+  
+  // If no models available, return loading state
+  if (!models || models.length === 0 || !currentModel) {
+    return (
+      <div className={compact ? 'px-3 py-1' : 'bg-white border border-gray-200 rounded-lg p-4'}>
+        <div className="flex items-center space-x-2 text-sm text-gray-500">
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+          <span>Loading models...</span>
+        </div>
+      </div>
+    );
+  }
+  
   const sortedModels = models.sort((a, b) => {
     // Sort by: Current model first, then Online, then Limited, then Loading, then Offline, then by name
     const isACurrent = a.id === currentModelId;
@@ -36,8 +49,8 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
     if (!isACurrent && isBCurrent) return 1;
     
     const statusOrder = { 'online': 0, 'limited': 1, 'loading': 2, 'offline': 3 };
-    const aOrder = statusOrder[a.status as keyof typeof statusOrder] ?? 4;
-    const bOrder = statusOrder[b.status as keyof typeof statusOrder] ?? 4;
+    const aOrder = statusOrder[(a?.status || 'unknown') as keyof typeof statusOrder] ?? 4;
+    const bOrder = statusOrder[(b?.status || 'unknown') as keyof typeof statusOrder] ?? 4;
     
     if (aOrder !== bOrder) return aOrder - bOrder;
     return a.name.localeCompare(b.name);
@@ -113,7 +126,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
     };
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
     switch (status) {
       case 'online':
         return 'text-green-500';
@@ -128,7 +141,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | undefined) => {
     switch (status) {
       case 'online':
         return <div className="w-2 h-2 bg-green-500 rounded-full"></div>;
@@ -143,7 +156,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string | undefined) => {
     switch (status) {
       case 'online':
         return 'Online';
@@ -169,8 +182,8 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center space-x-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors"
         >
-          <div className="text-xs">{getStatusIcon(currentModel.status)}</div>
-          <span className="font-medium">{currentModel.name}</span>
+          <div className="text-xs">{getStatusIcon(currentModel?.status || 'loading')}</div>
+          <span className="font-medium">{currentModel?.name || 'Loading...'}</span>
           <ChevronDown className="w-3 h-3" />
         </button>
 
@@ -190,7 +203,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                       onModelSwitch(model.id);
                       setIsOpen(false);
                     }}
-                    disabled={model.status === 'offline' || model.status === 'loading'}
+                    disabled={model?.status === 'offline' || model?.status === 'loading'}
                     className={`w-full p-4 text-left hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg disabled:opacity-50 disabled:cursor-not-allowed border-b border-gray-100 last:border-b-0 ${
                       model.id === currentModelId ? 'bg-[#FFC627] bg-opacity-20 border-l-4 border-l-[#FFC627]' : ''
                     }`}
@@ -205,9 +218,9 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                           {model.id === currentModelId && (
                             <Check className="w-4 h-4 text-[#FFC627] flex-shrink-0" />
                           )}
-                          <div className={`flex items-center space-x-1 text-xs ${getStatusColor(model.status)} flex-shrink-0`}>
-                            <div>{getStatusIcon(model.status)}</div>
-                            <span className="font-medium">{getStatusText(model.status)}</span>
+                          <div className={`flex items-center space-x-1 text-xs ${getStatusColor(model?.status)} flex-shrink-0`}>
+                            <div>{getStatusIcon(model?.status)}</div>
+                            <span className="font-medium">{getStatusText(model?.status)}</span>
                           </div>
                         </div>
                         
@@ -268,23 +281,23 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
         </div>
         <div className="flex-1">
           <div className="flex items-center space-x-2 mb-1">
-            <span className="font-medium text-gray-900">{currentModel.name}</span>
-            <div className={`flex items-center space-x-1 text-xs ${getStatusColor(currentModel.status)}`}>
-              <div>{getStatusIcon(currentModel.status)}</div>
-              <span className="font-medium">{getStatusText(currentModel.status)}</span>
+            <span className="font-medium text-gray-900">{currentModel?.name || 'Loading...'}</span>
+            <div className={`flex items-center space-x-1 text-xs ${getStatusColor(currentModel?.status || 'loading')}`}>
+              <div>{getStatusIcon(currentModel?.status || 'loading')}</div>
+              <span className="font-medium">{getStatusText(currentModel?.status || 'loading')}</span>
             </div>
           </div>
-          <p className="text-sm text-gray-600 mb-2">{getModelDescription(currentModel.id).purpose}</p>
-          <div className="flex items-center space-x-4 text-xs text-gray-500">
-            <span className="flex items-center space-x-1">
-              <Gauge className="w-3 h-3" />
-              <span>{getModelDescription(currentModel.id).rateLimiting}</span>
-            </span>
-            <span className="flex items-center space-x-1">
-              <DollarSign className="w-3 h-3" />
-              <span>{getModelDescription(currentModel.id).cost}</span>
-            </span>
-          </div>
+          <p className="text-sm text-gray-600 mb-2">{getModelDescription(currentModel?.id || '').purpose}</p>
+                      <div className="flex items-center space-x-4 text-xs text-gray-500">
+              <span className="flex items-center space-x-1">
+                <Gauge className="w-3 h-3" />
+                <span>{getModelDescription(currentModel?.id || '').rateLimiting}</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <DollarSign className="w-3 h-3" />
+                <span>{getModelDescription(currentModel?.id || '').cost}</span>
+              </span>
+            </div>
         </div>
       </div>
 
@@ -302,11 +315,11 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                     onModelSwitch(model.id);
                     setIsOpen(false);
                   }}
-                  disabled={model.status === 'offline' || model.status === 'loading'}
+                  disabled={model?.status === 'offline' || model?.status === 'loading'}
                   className={`w-full p-4 text-left border rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
                     model.id === currentModelId
                       ? 'border-[#FFC627] border-opacity-40 bg-[#FFC627] bg-opacity-20 shadow-sm'
-                      : model.status === 'online' || model.status === 'limited'
+                      : model?.status === 'online' || model?.status === 'limited'
                         ? 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm'
                         : 'border-gray-100 bg-gray-50'
                   }`}
@@ -325,9 +338,9 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                             <Check className="w-4 h-4 text-[#FFC627]" />
                           )}
                         </div>
-                        <div className={`text-xs font-medium ${getStatusColor(model.status)} flex items-center space-x-1`}>
-                          <span>{getStatusIcon(model.status)}</span>
-                          <span>{getStatusText(model.status)}</span>
+                        <div className={`text-xs font-medium ${getStatusColor(model?.status)} flex items-center space-x-1`}>
+                          <span>{getStatusIcon(model?.status)}</span>
+                          <span>{getStatusText(model?.status)}</span>
                         </div>
                       </div>
 
