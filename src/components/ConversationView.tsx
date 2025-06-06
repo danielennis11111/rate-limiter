@@ -9,6 +9,7 @@ import AIServiceRouter from '../services/AIServiceRouter';
 import { estimateTokenCount, calculateTokenUsage, DocumentContext } from '../utils/tokenCounter';
 import { EnhancedRAGProcessor } from '../utils/enhancedRAG';
 import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
+import { AvatarTTSService, AvatarSpeechRequest } from '../services/AvatarTTSService';
 import TokenUsagePreview from './TokenUsagePreview';
 import NotificationSystem, { Notification } from './NotificationSystem';
 import ModelSwitcher from './ModelSwitcher';
@@ -94,14 +95,29 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiService = useMemo(() => new AIServiceRouter(), []);
   
-  // Voice service removed - using browser TTS instead
-  // const pdfProcessor = new PDFProcessor(); // Currently unused
+  // Enhanced Avatar TTS service for Virtual Avatar Builder
+  const avatarTTSService = useRef<AvatarTTSService | null>(null);
   
   // Voice recognition setup
   const recognition = useRef<SpeechRecognition | null>(null);
   const synthesis = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
+    // Initialize Avatar TTS service for Virtual Avatar Builder
+    if (template.id === 'virtual-avatar-builder') {
+      // Get OpenAI API key from environment or configuration
+      const openaiApiKey = process.env.REACT_APP_OPENAI_API_KEY || 
+                          localStorage.getItem('openai_api_key') || 
+                          sessionStorage.getItem('openai_api_key');
+      
+      if (openaiApiKey) {
+        avatarTTSService.current = new AvatarTTSService(openaiApiKey, 'http://localhost:3001');
+        console.log('🎭 Avatar TTS Service initialized for Virtual Avatar Builder');
+      } else {
+        console.warn('⚠️ No OpenAI API key found for Avatar TTS');
+      }
+    }
+
     // Initialize voice services
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -214,6 +230,73 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const speakText = async (text: string, isAIResponse: boolean = false) => {
     if (!text.trim() || !isAIResponse) return;
 
+    // Use Avatar TTS for Virtual Avatar Builder
+    if (template.id === 'virtual-avatar-builder' && avatarTTSService.current) {
+      try {
+        setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
+        console.log(`🎭 ${template.persona}: Starting Avatar TTS...`);
+
+        const speechRequest: AvatarSpeechRequest = {
+          text: text,
+          context: `${template.persona} response`,
+          emotion: 'neutral',
+          avatarProfile: template.features?.voicePersona || 'scout-friendly'
+        };
+
+        const response = await avatarTTSService.current.generateAvatarSpeech(speechRequest);
+        
+        console.log(`🎭 Avatar TTS: Using ${response.avatarProfile.name} (${response.avatarProfile.ttsVoice})`);
+        console.log(`💭 Emotional tags: ${response.emotionalTags.join(', ')}`);
+
+        // Create audio element and play
+        const audio = new Audio(response.audioUrl);
+        
+        audio.onloadeddata = () => {
+          console.log(`🎭 ${template.persona}: Avatar speech ready to play`);
+        };
+
+        audio.onplay = () => {
+          console.log(`🎭 ${template.persona}: Avatar speaking started`);
+        };
+
+        audio.onended = () => {
+          setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
+          console.log(`✅ ${template.persona}: Avatar finished speaking`);
+          // Clean up the audio URL
+          URL.revokeObjectURL(response.audioUrl);
+        };
+
+        audio.onerror = (event) => {
+          console.error(`❌ ${template.persona}: Avatar speech error:`, event);
+          setVoiceStatus(prev => ({ 
+            ...prev, 
+            isSpeaking: false, 
+            error: 'Avatar voice playback failed' 
+          }));
+          URL.revokeObjectURL(response.audioUrl);
+        };
+
+        await audio.play();
+
+      } catch (error) {
+        console.error('🚨 Avatar TTS failed:', error);
+        setVoiceStatus(prev => ({ 
+          ...prev, 
+          isSpeaking: false, 
+          error: 'Avatar voice not available' 
+        }));
+        
+        // Fallback to browser TTS if Avatar TTS fails
+        console.log('📢 Falling back to browser TTS...');
+        await fallbackToBasicTTS(text);
+      }
+    } else {
+      // Use standard browser TTS for other templates
+      await fallbackToBasicTTS(text);
+    }
+  };
+
+  const fallbackToBasicTTS = async (text: string) => {
     // Stop any existing speech
     if (synthesis.current) {
       synthesis.current.cancel();
@@ -221,7 +304,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
     try {
       setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
-      console.log(`🎙️ ${template.persona}: Starting to speak...`);
+      console.log(`🎙️ ${template.persona}: Starting browser TTS...`);
 
       const utterance = new SpeechSynthesisUtterance(text);
       
@@ -243,16 +326,16 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       utterance.volume = 0.9;
 
       utterance.onstart = () => {
-        console.log(`🎙️ ${template.persona}: Speaking started`);
+        console.log(`🎙️ ${template.persona}: Browser speaking started`);
       };
 
       utterance.onend = () => {
         setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
-        console.log(`✅ ${template.persona}: Finished speaking`);
+        console.log(`✅ ${template.persona}: Browser finished speaking`);
       };
 
       utterance.onerror = (event) => {
-        console.error(`❌ ${template.persona}: Speech error:`, event);
+        console.error(`❌ ${template.persona}: Browser speech error:`, event);
         setVoiceStatus(prev => ({ 
           ...prev, 
           isSpeaking: false, 
@@ -263,7 +346,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       synthesis.current?.speak(utterance);
 
     } catch (error) {
-      console.error('🚨 Voice Service failed:', error);
+      console.error('🚨 Browser TTS failed:', error);
       setVoiceStatus(prev => ({ 
         ...prev, 
         isSpeaking: false, 
@@ -273,10 +356,16 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   };
 
   const stopSpeaking = () => {
+    // Stop browser TTS
     if (synthesis.current) {
       synthesis.current.cancel();
-      setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
     }
+    
+    // Stop Avatar TTS (audio elements will stop automatically when component unmounts or when new audio plays)
+    // For Avatar TTS, we could add a ref to track the current audio element if needed
+    
+    setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
+    console.log(`🔇 ${template.persona}: Stopped speaking`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
