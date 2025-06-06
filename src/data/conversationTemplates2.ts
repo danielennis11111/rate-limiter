@@ -434,7 +434,7 @@ Provide actionable, personalized productivity advice that creates sustainable sy
     id: 'ultra-long-context',
     name: '🌟 Ultra Long Context Analyst',
     description: 'Revolutionary 10M token context window for analyzing entire books, massive codebases, and complex research in a single session.',
-    modelId: 'Llama-4-Scout-17B-16E-Instruct',
+    modelId: 'llama3.1:8b', // Using available model until we can pull Llama 4
     icon: '🌟',
     color: 'bg-gradient-to-r from-purple-600 to-blue-600',
     systemPrompt: `You are the Ultra Long Context Analyst powered by Llama 4 Scout with an UNPRECEDENTED 10,240K context window. Your revolutionary capabilities include:
@@ -584,7 +584,7 @@ You are the ultimate AI assistant - more capable than any closed model while rem
     id: 'safety-guardian',
     name: '🛡️ Safety Guardian',
     description: 'Latest AI safety and content moderation with Llama Guard 4 for responsible AI deployment and content filtering.',
-    modelId: 'llama3.2:3b', // Using available model for safety features
+    modelId: 'Llama-Guard-4-12B',
     icon: '🛡️',
     color: 'bg-gradient-to-r from-green-600 to-blue-600',
     systemPrompt: `You are the Safety Guardian powered by Llama Guard 4 - the latest and most advanced AI safety model. Your protective capabilities include:
@@ -667,7 +667,7 @@ Ensure all AI interactions are safe, ethical, and beneficial while maintaining h
     id: 'research-powerhouse',
     name: '🔬 Research Powerhouse',
     description: 'Maximum reasoning power with Llama 3.3 70B for complex research, scientific analysis, and advanced problem-solving.',
-    modelId: 'llama3.1:8b', // Using available model for research tasks
+    modelId: 'Llama3.3-70B-Instruct',
     icon: '🔬',
     color: 'bg-gradient-to-r from-blue-600 to-purple-600',
     systemPrompt: `You are the Research Powerhouse powered by Llama 3.3 70B Instruct - the most powerful reasoning model for complex research and analysis. Your intellectual capabilities include:
@@ -751,7 +751,7 @@ Provide rigorous, evidence-based analysis with the highest standards of scientif
     id: 'advanced-vision-pro',
     name: '📊 Advanced Vision Pro',
     description: 'Most powerful vision model with Llama 3.2 90B Vision for complex visual analysis, scientific imaging, and advanced document processing.',
-    modelId: 'llama3.1:8b', // Using available model for advanced analysis
+    modelId: 'Llama3.2-90B-Vision-Instruct',
     icon: '📊',
     color: 'bg-gradient-to-r from-indigo-600 to-purple-600',
     systemPrompt: `You are the Advanced Vision Pro powered by Llama 3.2 90B Vision Instruct - the most powerful vision model available. Your advanced visual capabilities include:
