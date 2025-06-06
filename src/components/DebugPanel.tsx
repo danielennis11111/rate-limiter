@@ -169,7 +169,7 @@ const DebugPanel: React.FC<DebugPanelProps> = ({ modelManager }) => {
             <button
               onClick={() => testModel('gpt-4o')}
               disabled={isRefreshing}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+              className="px-3 py-1 text-xs bg-[#FFC627] bg-opacity-20 text-[#191919] rounded hover:bg-[#FFC627] hover:bg-opacity-30 disabled:opacity-50"
             >
               Test GPT-4o
             </button>

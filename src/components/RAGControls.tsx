@@ -106,7 +106,7 @@ export const RAGControls: React.FC<RAGControlsProps> = ({
             onChange={(e) => onToggleRAG(e.target.checked)}
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FFC627]"></div>
         </label>
       </div>
 
@@ -119,7 +119,7 @@ export const RAGControls: React.FC<RAGControlsProps> = ({
             <div
               className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
                 dragOver 
-                  ? 'border-blue-400 bg-blue-50' 
+                  ? 'border-[#FFC627] bg-[#FFC627] bg-opacity-20' 
                   : 'border-gray-300 hover:border-gray-400'
               }`}
               onDrop={handleDrop}
@@ -131,7 +131,7 @@ export const RAGControls: React.FC<RAGControlsProps> = ({
                 Drop PDF files here or{' '}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-blue-600 hover:text-blue-700 underline"
+                  className="text-[#FFC627] hover:text-yellow-600 underline"
                   disabled={isLoading}
                 >
                   browse
@@ -179,14 +179,14 @@ export const RAGControls: React.FC<RAGControlsProps> = ({
               </div>
               
               {/* Summary */}
-              <div className="mt-3 p-2 bg-blue-50 rounded-md">
+              <div className="mt-3 p-2 bg-[#FFC627] bg-opacity-20 rounded-md">
                 <div className="flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm text-blue-800">
+                  <AlertCircle className="w-4 h-4 text-[#FFC627]" />
+                  <span className="text-sm text-[#191919]">
                     Total: {formatFileSize(totalSize)} • {totalTokens.toLocaleString()} tokens
                   </span>
                 </div>
-                <p className="text-xs text-blue-700 mt-1">
+                <p className="text-xs text-gray-700 mt-1">
                   RAG will search these documents to provide contextual answers to your questions.
                 </p>
               </div>

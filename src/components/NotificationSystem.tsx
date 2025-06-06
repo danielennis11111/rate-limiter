@@ -52,7 +52,7 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({
         return <AlertTriangle className="w-5 h-5 text-red-500" />;
       case 'info':
       default:
-        return <Info className="w-5 h-5 text-blue-500" />;
+        return <Info className="w-5 h-5 text-[#FFC627]" />;
     }
   };
 
@@ -66,7 +66,7 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({
         return 'bg-red-50 border-red-200 text-red-800';
       case 'info':
       default:
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return 'bg-[#FFC627] bg-opacity-20 border-[#FFC627] border-opacity-40 text-[#191919]';
     }
   };
 
@@ -99,7 +99,7 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({
                       onClick={action.onClick}
                       className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
                         action.variant === 'primary'
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          ? 'bg-[#FFC627] text-[#191919] hover:bg-yellow-400'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >

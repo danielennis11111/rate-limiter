@@ -37,7 +37,7 @@ const StatusTestPanel: React.FC<StatusTestPanelProps> = ({
       case 'limited':
         return <AlertCircle className="w-4 h-4 text-yellow-500" />;
       case 'loading':
-        return <Clock className="w-4 h-4 text-blue-500" />;
+        return <Clock className="w-4 h-4 text-[#FFC627]" />;
       default:
         return <AlertCircle className="w-4 h-4 text-gray-500" />;
     }
@@ -52,7 +52,7 @@ const StatusTestPanel: React.FC<StatusTestPanelProps> = ({
       case 'limited':
         return 'bg-yellow-50 border-yellow-200';
       case 'loading':
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-[#FFC627] bg-opacity-20 border-[#FFC627] border-opacity-40';
       default:
         return 'bg-gray-50 border-gray-200';
     }
@@ -87,7 +87,7 @@ const StatusTestPanel: React.FC<StatusTestPanelProps> = ({
     <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <CheckCircle className="w-5 h-5 mr-2 text-blue-500" />
+          <CheckCircle className="w-5 h-5 mr-2 text-[#FFC627]" />
           Model Status Monitor
         </h3>
         <div className="flex items-center space-x-3">
@@ -99,7 +99,7 @@ const StatusTestPanel: React.FC<StatusTestPanelProps> = ({
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center space-x-1 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm transition-colors disabled:opacity-50"
+            className="flex items-center space-x-1 px-3 py-1 bg-[#FFC627] bg-opacity-20 hover:bg-[#FFC627] hover:bg-opacity-30 text-[#191919] rounded text-sm transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>{isRefreshing ? 'Testing...' : 'Test All'}</span>

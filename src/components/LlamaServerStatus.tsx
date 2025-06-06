@@ -58,7 +58,7 @@ export const LlamaServerStatus: React.FC<LlamaServerStatusProps> = ({ llamaServi
       {!isServerRunning && (
         <button
           onClick={() => setShowInstructions(!showInstructions)}
-          className="text-blue-500 hover:text-blue-700 underline text-xs"
+          className="text-[#FFC627] hover:text-yellow-600 underline text-xs"
         >
           Start Guide
         </button>

@@ -37,7 +37,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
       case 'limited':
         return 'text-yellow-500';
       case 'loading':
-        return 'text-blue-500';
+        return 'text-[#FFC627]';
       default:
         return 'text-gray-500';
     }
@@ -108,7 +108,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                   }}
                   disabled={model.status === 'offline' || model.status === 'loading'}
                   className={`w-full px-3 py-2 text-left hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between ${
-                    model.id === currentModelId ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                    model.id === currentModelId ? 'bg-[#FFC627] bg-opacity-20 border-l-2 border-[#FFC627]' : ''
                   }`}
                 >
                   <div className="flex items-center space-x-2">
@@ -117,7 +117,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                   </div>
                   <div className="flex items-center space-x-1">
                     {model.id === currentModelId && (
-                      <Check className="w-3 h-3 text-blue-500" />
+                      <Check className="w-3 h-3 text-[#FFC627]" />
                     )}
                     <div className={`flex items-center space-x-1 text-xs ${getStatusColor(model.status)}`}>
                       <span>{getStatusIcon(model.status)}</span>
@@ -144,7 +144,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
         </h3>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="text-sm text-blue-600 hover:text-blue-700 flex items-center"
+          className="text-sm text-[#FFC627] hover:text-yellow-600 flex items-center"
         >
           Switch Model <ChevronDown className="w-3 h-3 ml-1" />
         </button>
@@ -179,7 +179,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
               disabled={model.status === 'offline' || model.status === 'loading'}
               className={`w-full p-3 text-left border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 model.id === currentModelId
-                  ? 'border-blue-200 bg-blue-50'
+                  ? 'border-[#FFC627] border-opacity-40 bg-[#FFC627] bg-opacity-20'
                   : model.status === 'online' || model.status === 'limited'
                     ? 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     : 'border-gray-100 bg-gray-50'
@@ -192,7 +192,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-gray-900">{model.name}</span>
                       {model.id === currentModelId && (
-                        <Check className="w-4 h-4 text-blue-500" />
+                        <Check className="w-4 h-4 text-[#FFC627]" />
                       )}
                     </div>
                     <p className="text-xs text-gray-600">{model.description}</p>

@@ -163,7 +163,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         
         <div className="flex items-center space-x-2">
           {isChecking && (
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-[#FFC627] border-t-transparent rounded-full animate-spin"></div>
           )}
           <svg 
             className={`w-4 h-4 text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -190,7 +190,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 disabled={model.status === 'offline'}
                 className={`w-full flex items-center justify-between p-2 rounded-md transition-colors ${
                   model.id === currentModel
-                    ? 'bg-blue-100 text-blue-900'
+                    ? 'bg-[#FFC627] bg-opacity-20 text-[#191919]'
                     : model.status === 'offline'
                     ? 'text-gray-400 cursor-not-allowed'
                     : 'hover:bg-gray-100 text-gray-900'
@@ -207,7 +207,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 </div>
                 
                 {model.id === currentModel && (
-                  <div className="w-4 h-4 text-blue-600">
+                  <div className="w-4 h-4 text-[#FFC627]">
                     <svg fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>

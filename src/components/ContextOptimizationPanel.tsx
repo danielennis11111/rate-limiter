@@ -84,7 +84,7 @@ export const ContextOptimizationPanel: React.FC<ContextOptimizationPanelProps> =
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <Zap className="w-5 h-5 text-blue-600" />
+          <Zap className="w-5 h-5 text-[#FFC627]" />
           <h3 className="font-semibold text-gray-900">Context Optimization</h3>
           {optimizationState.emergencyMode.active && (
             <ShieldAlert className="w-4 h-4 text-red-500" />
@@ -113,7 +113,7 @@ export const ContextOptimizationPanel: React.FC<ContextOptimizationPanelProps> =
           />
         </div>
         {compressionRatio < 1 && (
-          <div className="text-xs text-blue-600 mt-1">
+          <div className="text-xs text-[#FFC627] mt-1">
             Compression active: {((1 - compressionRatio) * 100).toFixed(1)}% space saved
           </div>
         )}
@@ -124,7 +124,7 @@ export const ContextOptimizationPanel: React.FC<ContextOptimizationPanelProps> =
         <button
           onClick={() => handleCompress('hybrid')}
           disabled={optimizationState.cache.length === 0}
-          className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          className="flex items-center justify-center space-x-2 px-3 py-2 bg-[#FFC627] bg-opacity-20 text-[#191919] rounded-lg hover:bg-[#FFC627] hover:bg-opacity-30 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
         >
           <Archive className="w-4 h-4" />
           <span>Auto Compress</span>
@@ -158,12 +158,12 @@ export const ContextOptimizationPanel: React.FC<ContextOptimizationPanelProps> =
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search conversation history..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FFC627] focus:border-[#FFC627] text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
               <button
                 onClick={handleSearch}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                className="px-4 py-2 bg-[#FFC627] text-[#191919] rounded-lg hover:bg-yellow-400 text-sm"
               >
                 Search
               </button>
@@ -185,7 +185,7 @@ export const ContextOptimizationPanel: React.FC<ContextOptimizationPanelProps> =
               </button>
               <button
                 onClick={() => handleCompress('semantic')}
-                className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm"
+                className="px-3 py-2 bg-[#FFC627] bg-opacity-20 text-[#191919] rounded-lg hover:bg-[#FFC627] hover:bg-opacity-30 text-sm"
               >
                 Semantic
               </button>

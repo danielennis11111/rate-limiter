@@ -31,7 +31,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">🚀 Choose Your AI Adventure</h2>
-              <p className="text-blue-100 mt-1">Welcome to Beta Land @ ASU - Select your AI companion for exploration</p>
+              <p className="text-yellow-100 mt-1">Welcome to Beta Land @ ASU - Select your AI companion for exploration</p>
             </div>
             <button
               onClick={onClose}
@@ -57,7 +57,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                   className={`
                     relative p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer
                     ${isAvailable 
-                      ? 'border-gray-200 hover:border-blue-400 hover:shadow-md bg-white' 
+                      ? 'border-gray-200 hover:border-[#FFC627] hover:shadow-md bg-white' 
                       : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
                     }
                   `}

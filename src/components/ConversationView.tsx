@@ -650,7 +650,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             </div>
             <div className="mt-1 flex flex-wrap gap-1">
               {template.capabilities.slice(0, 4).map((capability, index) => (
-                <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                <span key={index} className="px-2 py-1 bg-[#FFC627] bg-opacity-20 text-[#191919] text-xs rounded">
                   {capability}
                 </span>
               ))}
@@ -680,7 +680,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessingPDF}
-            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                            className="px-3 py-1 bg-[#FFC627] text-[#191919] text-sm rounded hover:bg-yellow-400 disabled:opacity-50"
           >
             {isProcessingPDF ? 'Processing...' : 'Upload PDFs'}
           </button>
@@ -747,7 +747,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
               <div
                 className={`max-w-3xl px-4 py-2 rounded-lg ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#FFC627] text-[#191919]'
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
@@ -760,7 +760,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                     prose-em:text-gray-700
                     prose-ul:text-gray-900 prose-ol:text-gray-900
                     prose-li:text-gray-900 prose-li:marker:text-gray-500
-                    prose-code:text-blue-700 prose-code:bg-blue-50 prose-code:px-1 prose-code:rounded
+                    prose-code:text-[#191919] prose-code:bg-[#FFC627] prose-code:bg-opacity-20 prose-code:px-1 prose-code:rounded
                     prose-pre:bg-gray-50 prose-pre:text-gray-800
                     prose-blockquote:text-gray-700 prose-blockquote:border-l-gray-300
                     prose-hr:border-gray-200">
@@ -772,7 +772,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                   <div className="whitespace-pre-wrap">{message.content}</div>
                 )}
                 <div className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                  message.role === 'user' ? 'text-gray-700' : 'text-gray-500'
                 }`}>
                   {formatTime(message.timestamp)}
                   {message.tokens && ` • ${message.tokens} tokens`}
@@ -783,7 +783,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                   <button
                     onClick={() => speakText(message.content, true)} // true = AI response
                     disabled={voiceStatus.isSpeaking || !message.content}
-                    className="mt-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:text-gray-400"
+                    className="mt-1 text-xs text-[#FFC627] hover:text-yellow-600 disabled:opacity-50 disabled:text-gray-400"
                     title="Speak this response"
                   >
                     {voiceStatus.isSpeaking ? '⏸️ Speaking...' : '🔊 Listen'}
@@ -846,12 +846,12 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                   : 'Type your message...'
             }
             disabled={isLoading || isRateLimited}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FFC627] focus:border-transparent disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={!input.trim() || isLoading || isRateLimited}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-[#FFC627] text-[#191919] rounded-lg hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Sending...' : 'Send'}
           </button>

@@ -109,7 +109,7 @@ const ModelStatusBar: React.FC<ModelStatusBarProps> = ({ models, onRefresh }) =>
                 {model.capabilities.join(', ')}
               </div>
               {model.isMultimodal && (
-                <div className="text-xs text-blue-300">🔮 Multimodal</div>
+                <div className="text-xs text-yellow-300">🔮 Multimodal</div>
               )}
               <div className="absolute top-full right-2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-900" />
             </div>

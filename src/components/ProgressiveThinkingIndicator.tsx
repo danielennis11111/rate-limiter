@@ -52,13 +52,13 @@ const ProgressiveThinkingIndicator: React.FC<ProgressiveThinkingIndicatorProps> 
             {elapsedTime < 5 ? (
               // Fast animation for initial thinking
               <>
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-2 h-2 bg-[#FFC627] rounded-full animate-bounce"></div>
+        <div className="w-2 h-2 bg-[#FFC627] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+        <div className="w-2 h-2 bg-[#FFC627] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
               </>
             ) : (
               // Brain icon for deep thinking
-              <Brain className="w-5 h-5 text-blue-600 animate-pulse" />
+              <Brain className="w-5 h-5 text-[#FFC627] animate-pulse" />
             )}
           </div>
           
@@ -87,7 +87,7 @@ const ProgressiveThinkingIndicator: React.FC<ProgressiveThinkingIndicatorProps> 
           <div className="mt-2">
             <div className="w-full bg-gray-200 rounded-full h-1">
               <div 
-                className="bg-blue-600 h-1 rounded-full transition-all duration-1000"
+                className="bg-[#FFC627] h-1 rounded-full transition-all duration-1000"
                 style={{ 
                   width: `${Math.min(100, ((elapsedTime - 5) / 30) * 100)}%`,
                   animation: 'pulse 2s infinite'
