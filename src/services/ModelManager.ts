@@ -224,125 +224,8 @@ export class ModelManager {
 
   private async checkOpenAIStatus(modelId: string, startTime: number): Promise<ModelStatus> {
     try {
-      // Check if OpenAI API key is available
-      const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('OpenAI API key not configured');
-      }
-
-      console.log(`🔍 Testing OpenAI status for ${modelId}...`);
-
-      // Test basic API connectivity
-      const modelsResponse = await fetch('https://api.openai.com/v1/models', {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!modelsResponse.ok) {
-        if (modelsResponse.status === 429) {
-          throw new Error(`OpenAI rate limited (${modelsResponse.status})`);
-        } else if (modelsResponse.status === 401) {
-          throw new Error('OpenAI API key invalid');
-        } else {
-          throw new Error(`OpenAI API error: ${modelsResponse.status}`);
-        }
-      }
-
-      // Check if specific model is available
-      const modelsData = await modelsResponse.json();
-      const availableModels = modelsData.data.map((m: any) => m.id);
-      
-      let modelStatus: 'online' | 'limited' | 'offline' = 'online';
-      let statusDetails: string[] = [];
-
-      // Check if the specific model is available
-      if (!availableModels.includes(modelId)) {
-        // Some 2025 models might not be in the models list yet but still work
-        const is2025Model = ['o3', 'o4-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano'].includes(modelId);
-        if (is2025Model) {
-          statusDetails.push('Model in preview/limited access');
-          modelStatus = 'limited';
-        } else {
-          throw new Error(`Model ${modelId} not available in your OpenAI account`);
-        }
-      }
-
-      // Test TTS capability (quick test for supported models)
-      if (['gpt-4o', 'gpt-4o-mini'].includes(modelId)) {
-        try {
-          const ttsTest = await fetch('https://api.openai.com/v1/audio/speech', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: 'tts-1',
-              input: 'test',
-              voice: 'alloy',
-              response_format: 'mp3'
-            })
-          });
-
-          if (ttsTest.ok) {
-            statusDetails.push('TTS available');
-          } else if (ttsTest.status === 429) {
-            statusDetails.push('TTS rate limited');
-            modelStatus = 'limited';
-          }
-        } catch (ttsError) {
-          statusDetails.push('TTS unavailable');
-        }
-      }
-
-      // Test image generation capability
-      if (['gpt-4o', 'dall-e-3'].includes(modelId)) {
-        try {
-          const imageTest = await fetch('https://api.openai.com/v1/images/generations', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: 'dall-e-3',
-              prompt: 'test',
-              n: 1,
-              size: '1024x1024'
-            })
-          });
-
-          if (imageTest.ok) {
-            statusDetails.push('Image gen available');
-          } else if (imageTest.status === 429) {
-            statusDetails.push('Image gen rate limited');
-            modelStatus = 'limited';
-          }
-        } catch (imageError) {
-          statusDetails.push('Image gen unavailable');
-        }
-      }
-
-      const responseTime = Date.now() - startTime;
-      const status: ModelStatus = {
-        modelId,
-        isRunning: modelStatus === 'online' || modelStatus === 'limited',
-        lastChecked: new Date(),
-        responseTime,
-        additionalInfo: statusDetails.length > 0 ? statusDetails.join(', ') : undefined
-      };
-
-      const model = this.models.get(modelId);
-      if (model) {
-        model.status = modelStatus;
-      }
-      this.statusCache.set(modelId, status);
-
-      console.log(`✅ OpenAI ${modelId}: ${modelStatus} (${responseTime}ms) - ${statusDetails.join(', ')}`);
-      return status;
-
+      // OpenAI API keys not available in GitHub Pages deployment
+      throw new Error('OpenAI service not available in GitHub Pages mode');
     } catch (error) {
       console.error(`❌ OpenAI ${modelId} status check failed:`, error);
       throw error;
@@ -351,34 +234,8 @@ export class ModelManager {
 
   private async checkGeminiStatus(modelId: string, startTime: number): Promise<ModelStatus> {
     try {
-      // Check if Gemini API key is available
-      const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('Gemini API key not configured');
-      }
-
-      // Make a simple test request to check if the service is working
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
-      }
-
-      const responseTime = Date.now() - startTime;
-      const status: ModelStatus = {
-        modelId,
-        isRunning: true,
-        lastChecked: new Date(),
-        responseTime
-      };
-
-      const model = this.models.get(modelId);
-      if (model) {
-        model.status = 'online';
-      }
-      this.statusCache.set(modelId, status);
-
-      return status;
+      // Gemini API keys not available in GitHub Pages deployment
+      throw new Error('Gemini service not available in GitHub Pages mode');
     } catch (error) {
       throw error;
     }

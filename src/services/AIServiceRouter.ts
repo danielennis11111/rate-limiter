@@ -49,21 +49,9 @@ export class AIServiceRouter {
     this.llamaService = new LlamaService();
     this.llamaStackService = new LlamaStackService();
     
-    // Initialize Gemini service if API key is available
-    const geminiApiKey = process.env.REACT_APP_GEMINI_API_KEY;
-    if (geminiApiKey) {
-      this.geminiService = new GeminiService({
-        apiKey: geminiApiKey
-      });
-    }
-
-    // Initialize OpenAI service if API key is available
-    const openaiApiKey = process.env.REACT_APP_OPENAI_API_KEY;
-    if (openaiApiKey) {
-      this.openaiService = new OpenAIService({
-        apiKey: openaiApiKey
-      });
-    }
+    // API services are not initialized in GitHub Pages deployment
+    // Users can access local Llama models which don't require API keys
+    console.log('🏠 Running in GitHub Pages mode - API services disabled');
   }
 
   /**

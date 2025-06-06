@@ -43,4 +43,28 @@ pids
 *.swo
 
 # OS generated files
-Thumbs.db 
+Thumbs.db
+
+# PDF processing temporary files
+temp_*
+
+# ASU documents and knowledge bases
+*.pdf
+*.doc
+*.docx
+*.txt
+*.rtf
+uploads/
+docs/
+
+# System and dev files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# API keys and secrets - don't commit these!
+.env
+.env.local
+.env.*.local 
