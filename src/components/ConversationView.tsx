@@ -23,6 +23,7 @@ import HighlightedText from './HighlightedText';
 import RAGDiscoveryPanel from './RAGDiscoveryPanel';
 import { convertRAGResultsToCitations, filterAndRankCitations, createRAGDiscovery, parseTextWithHighlighting } from '../utils/citationParser';
 import { IncantationEngine } from '../services/IncantationEngine';
+import { contextManager } from '../utils/contextManager';
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -1107,6 +1108,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           currentInput={input}
           currentModelId={currentModelId}
           ragContext={ragContext}
+          ragDocuments={ragProcessor.getDocuments()}
         />
       </div>
 
