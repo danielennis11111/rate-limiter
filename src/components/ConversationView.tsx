@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Conversation, ConversationTemplate, Message } from '../types/index';
+import { ConversationTemplate, Message, Conversation } from '../types/index';
 import { ConversationManager } from '../services/ConversationManager';
 import { ModelManager } from '../services/ModelManager';
 import { PDFProcessor } from '../utils/pdfProcessor';
 import AIServiceRouter from '../services/AIServiceRouter';
+import { estimateTokenCount, calculateTokenUsage, DocumentContext } from '../utils/tokenCounter';
+import { EnhancedRAGProcessor } from '../utils/enhancedRAG';
 import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
-import { estimateTokenCount } from '../utils/mockData';
 import TokenUsagePreview from './TokenUsagePreview';
 
 interface ConversationViewProps {
@@ -697,6 +698,13 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             {isLoading ? 'Sending...' : 'Send'}
           </button>
         </form>
+        
+        {/* AI Disclaimer */}
+        <div className="mt-3 text-center">
+          <p className="text-xs text-gray-500">
+            Users are speaking with a synthetic version of {template.persona} created with Generative AI
+          </p>
+        </div>
       </div>
     </div>
   );

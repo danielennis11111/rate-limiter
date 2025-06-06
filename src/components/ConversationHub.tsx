@@ -128,31 +128,10 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Top Bar */}
-          {conversations.length > 0 && (
-            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={toggleSidebar}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  aria-label="Toggle sidebar"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-                
-                <h1 className="text-lg font-semibold text-gray-900">
-                  Beta Land @ ASU
-                </h1>
-              </div>
-
-              <ModelStatusBar models={models} onRefresh={() => modelManager.refreshModelStatus()} />
-            </div>
-          )}
+          
 
           {/* Welcome Experience */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-scroll">
             <WelcomeExperience
               experiences={templates}
               onSelectExperience={handleCreateConversation}
@@ -197,27 +176,7 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={toggleSidebar}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="Toggle sidebar"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            
-            <div className="flex items-center space-x-2">
-              <h1 className="text-lg font-semibold text-gray-900">
-                {activeConversation.title}
-              </h1>
-            </div>
-          </div>
-
-          <ModelStatusBar models={models} onRefresh={() => modelManager.refreshModelStatus()} />
-        </div>
+        
 
         {/* Conversation View */}
         <div className="flex-1 overflow-hidden">

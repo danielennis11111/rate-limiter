@@ -217,20 +217,39 @@ Make your responses visually appealing and easy to scan with proper formatting.`
     }
 
     try {
-      // Convert messages to OpenAI format
+      // Convert messages to OpenAI format and ensure system prompt is first
       const openaiMessages = messages.map(msg => ({
         role: msg.role as 'user' | 'assistant' | 'system',
         content: msg.content
       }));
 
-      console.log(`🧠 Sending request to OpenAI model: ${modelId}`);
+      // Ensure system prompt is applied - this is critical for personas
+      if (options.systemPrompt) {
+        // Remove any existing system messages
+        const filteredMessages = openaiMessages.filter(msg => msg.role !== 'system');
+        
+        // Add the proper system prompt with RAG context if available
+        let systemContent = options.systemPrompt;
+        if (options.ragContext) {
+          systemContent += `\n\n## Document Context\n\nThe user has uploaded the following documents for context:\n\n${options.ragContext}\n\nUse this context to provide more relevant and informed responses when applicable.`;
+        }
+        
+        // Add system message as first message
+        filteredMessages.unshift({
+          role: 'system',
+          content: systemContent
+        });
+        
+        openaiMessages.length = 0;
+        openaiMessages.push(...filteredMessages);
+      }
+
+      console.log(`🧠 Sending request to OpenAI model: ${modelId} with system prompt applied`);
       
       const response = await this.openaiService.chat(openaiMessages, {
         model: modelId,
-        systemPrompt: options.systemPrompt,
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
-        ragContext: options.ragContext
+        maxTokens: options.maxTokens
       });
 
       return {
@@ -284,20 +303,39 @@ Make your responses visually appealing and easy to scan with proper formatting.`
     }
 
     try {
-      // Convert messages to OpenAI format
+      // Convert messages to OpenAI format and ensure system prompt is first
       const openaiMessages = messages.map(msg => ({
         role: msg.role as 'user' | 'assistant' | 'system',
         content: msg.content
       }));
 
-      console.log(`🧠 Streaming from OpenAI model: ${modelId}`);
+      // Ensure system prompt is applied - this is critical for personas
+      if (options.systemPrompt) {
+        // Remove any existing system messages
+        const filteredMessages = openaiMessages.filter(msg => msg.role !== 'system');
+        
+        // Add the proper system prompt with RAG context if available
+        let systemContent = options.systemPrompt;
+        if (options.ragContext) {
+          systemContent += `\n\n## Document Context\n\nThe user has uploaded the following documents for context:\n\n${options.ragContext}\n\nUse this context to provide more relevant and informed responses when applicable.`;
+        }
+        
+        // Add system message as first message
+        filteredMessages.unshift({
+          role: 'system',
+          content: systemContent
+        });
+        
+        openaiMessages.length = 0;
+        openaiMessages.push(...filteredMessages);
+      }
+
+      console.log(`🧠 Streaming from OpenAI model: ${modelId} with system prompt applied`);
       
       const stream = this.openaiService.streamChat(openaiMessages, {
         model: modelId,
-        systemPrompt: options.systemPrompt,
         temperature: options.temperature,
-        maxTokens: options.maxTokens,
-        ragContext: options.ragContext
+        maxTokens: options.maxTokens
       });
 
       for await (const chunk of stream) {
