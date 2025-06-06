@@ -144,9 +144,13 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
             )}
             
             {/* Title */}
-            <h1 className="text-lg font-semibold text-gray-900">
+            <button
+              onClick={handleNewExperience}
+              className="text-lg font-semibold text-gray-900 hover:text-[#FFC627] transition-colors"
+              title="ASU AI Experiences Homepage"
+            >
               ASU AI Experiences
-            </h1>
+            </button>
             
             {/* Model Status */}
             <div className="flex items-center">
@@ -213,10 +217,23 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
             </button>
           )}
           
-          {/* Conversation Title */}
-          <h1 className="text-lg font-semibold text-gray-900">
-            {activeConversation?.title || 'Conversation'}
-          </h1>
+          {/* Conversation Title and Navigation */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleNewExperience}
+              className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-600 hover:text-[#FFC627] hover:bg-[#FFC627] hover:bg-opacity-10 rounded-lg transition-colors"
+              title="Back to AI Experiences Homepage"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Experiences</span>
+            </button>
+            <div className="h-4 w-px bg-gray-300"></div>
+            <h1 className="text-lg font-semibold text-gray-900">
+              {activeConversation?.title || 'Conversation'}
+            </h1>
+          </div>
           
           {/* Model Status */}
           <div className="flex items-center">

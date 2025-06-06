@@ -80,11 +80,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         <button
           onClick={onCreateConversation}
           className="w-full mt-3 bg-[#FFC627] text-[#191919] py-2 px-4 rounded-lg hover:bg-yellow-400 transition-colors flex items-center justify-center space-x-2"
+          title="Start a new conversation or return to AI experiences"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span>New Chat</span>
+          <span>{activeConversationId ? 'New Experience' : 'New Chat'}</span>
         </button>
       </div>
 
@@ -189,12 +190,16 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center justify-center space-x-2">
+        <button
+          onClick={onCreateConversation}
+          className="w-full flex items-center justify-center space-x-2 p-2 hover:bg-gray-50 rounded-lg transition-colors group"
+          title="Return to AI Experiences Homepage"
+        >
           <img src={`${process.env.PUBLIC_URL}/site-logo.png`} alt="Beta Land @ ASU" className="w-11" />
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-500 group-hover:text-[#FFC627]">
             Beta Land @ ASU
           </div>
-        </div>
+        </button>
       </div>
     </div>
   );
