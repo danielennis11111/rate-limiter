@@ -161,47 +161,62 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   };
 
   const speakText = async (text: string, isAIResponse: boolean = false) => {
-    // 🎙️ ONLY speak AI responses using magical OpenAI voices
-    if (!text || !isAIResponse || !voiceService) return;
+    if (!text.trim() || !isAIResponse) return;
 
-    // Stop any existing speech (fallback to synthesis for compatibility)
+    // Stop any existing speech
     if (synthesis.current) {
       synthesis.current.cancel();
     }
 
     try {
-      // 🎵 Use OpenAI's magical voice service with persona-specific voices
-      await voiceService.playText(
-        text,
-        template.persona, // Use the persona (Michael Crow, Elizabeth Reilley, etc.)
-        () => {
-          // On speech start
-          setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
-          console.log(`🎙️ ${template.persona}: Speaking with OpenAI voice...`);
-        },
-        () => {
-          // On speech end
-          setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
-          console.log(`✅ ${template.persona}: Finished speaking`);
-        },
-        (error: Error) => {
-          // On error
-          setVoiceStatus(prev => ({ 
-            ...prev, 
-            isSpeaking: false, 
-            error: `Voice error: ${error.message}` 
-          }));
-          console.error(`❌ ${template.persona}: Voice error:`, error);
-        }
-      );
-    } catch (error) {
-      console.error('🚨 OpenAI Voice Service failed:', error);
+      setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
+      console.log(`🎙️ ${template.persona}: Starting to speak...`);
+
+      const utterance = new SpeechSynthesisUtterance(text);
       
-      // Graceful fallback: no voice rather than synthetic
+      // Get available voices and select the best one
+      const voices = synthesis.current?.getVoices() || [];
+      const preferredVoice = voices.find(voice => 
+        voice.name.toLowerCase().includes('samantha') || 
+        voice.name.toLowerCase().includes('alex') ||
+        voice.name.toLowerCase().includes('karen') ||
+        voice.name.toLowerCase().includes('daniel')
+      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 0.9;
+
+      utterance.onstart = () => {
+        console.log(`🎙️ ${template.persona}: Speaking started`);
+      };
+
+      utterance.onend = () => {
+        setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
+        console.log(`✅ ${template.persona}: Finished speaking`);
+      };
+
+      utterance.onerror = (event) => {
+        console.error(`❌ ${template.persona}: Speech error:`, event);
+        setVoiceStatus(prev => ({ 
+          ...prev, 
+          isSpeaking: false, 
+          error: 'Voice playback failed' 
+        }));
+      };
+
+      synthesis.current?.speak(utterance);
+
+    } catch (error) {
+      console.error('🚨 Voice Service failed:', error);
       setVoiceStatus(prev => ({ 
         ...prev, 
         isSpeaking: false, 
-        error: null // Don't show error to user for voice failures
+        error: 'Voice not available' 
       }));
     }
   };
@@ -254,7 +269,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       onConversationUpdate();
 
       // Stream the response in real-time
-      console.log('🚀 About to call streamMessage with model:', template.modelId);
+
       const stream = aiService.streamMessage(
         llamaMessages,
         template.modelId,
@@ -268,13 +283,13 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       );
 
       let fullContent = '';
-      console.log('🔄 Starting to stream response...');
+
       
       try {
         let chunkCount = 0;
         for await (const chunk of stream) {
           chunkCount++;
-          console.log(`📝 Received chunk #${chunkCount}:`, chunk);
+
           fullContent += chunk;
           
           // Update the assistant message with the streaming content
@@ -284,14 +299,18 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           // Trigger a re-render to show the streaming text
           onConversationUpdate();
           
-          // Small delay to make streaming visible
-          await new Promise(resolve => setTimeout(resolve, 10));
+                  // Add natural pauses for sentence-like streaming
+        if (chunk.includes('.') || chunk.includes('!') || chunk.includes('?') || chunk.includes('\n')) {
+          await new Promise(resolve => setTimeout(resolve, 100)); // Longer pause for sentences
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 20)); // Short pause for words
         }
-        console.log(`✅ Streaming complete. Total chunks: ${chunkCount}, Content length: ${fullContent.length}`);
+        }
+
         
         // If no content was streamed, fall back to regular API call
         if (fullContent.length === 0) {
-          console.log('⚠️ No content from streaming, falling back to regular API...');
+
           const response = await aiService.sendMessage(
             llamaMessages,
             template.modelId,
@@ -312,7 +331,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         console.error('🚨 Streaming error:', streamError);
         // Fallback to regular API call
         try {
-          console.log('🔄 Falling back to regular API call...');
+
           const response = await aiService.sendMessage(
             llamaMessages,
             template.modelId,
@@ -335,10 +354,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         }
       }
       
-      // Auto-speak AI response if voice is enabled (NOT user input)
-      if (isVoiceEnabled && !voiceStatus.isSpeaking && fullContent) {
-        speakText(fullContent, true); // true = this is an AI response
-      }
+      // Don't auto-speak responses - let users click the speak button if they want to hear it
       
     } catch (error) {
       console.error('Error sending message:', error);
@@ -605,14 +621,14 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                   {message.modelUsed && ` • ${message.modelUsed}`}
                 </div>
                 
-                {message.role === 'assistant' && isVoiceEnabled && (
+                {message.role === 'assistant' && message.content && (
                   <button
                     onClick={() => speakText(message.content, true)} // true = AI response
-                    disabled={voiceStatus.isSpeaking}
-                    className="mt-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    disabled={voiceStatus.isSpeaking || !message.content}
+                    className="mt-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:text-gray-400"
                     title="Speak this response"
                   >
-                    🔊 Speak
+                    {voiceStatus.isSpeaking ? '⏸️ Speaking...' : '🔊 Listen'}
                   </button>
                 )}
               </div>

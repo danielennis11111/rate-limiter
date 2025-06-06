@@ -7,8 +7,8 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          <Route path="/rate-limiter" element={<ConversationHub />} />
-          <Route path="/" element={<Navigate to="/rate-limiter" replace />} />
+                  <Route path="/beta-land" element={<ConversationHub />} />
+        <Route path="/" element={<Navigate to="/beta-land" replace />} />
         </Routes>
       </div>
     </Router>

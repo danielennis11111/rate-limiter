@@ -143,7 +143,7 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
                 </button>
                 
                 <h1 className="text-lg font-semibold text-gray-900">
-                  ASU GPT Beta Land
+                  Beta Land @ ASU
                 </h1>
               </div>
 

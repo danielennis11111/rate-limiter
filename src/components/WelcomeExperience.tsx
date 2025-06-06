@@ -11,15 +11,15 @@ const WelcomeExperience: React.FC<WelcomeExperienceProps> = ({
   onSelectExperience 
 }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 overflow-y-auto">
-      <div className="max-w-6xl w-full mx-auto py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="max-w-6xl w-full mx-auto p-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-6">
             <div className="text-6xl mr-4">🚀</div>
             <div>
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">
-                ASU GPT Beta Land
+                Beta Land @ ASU
               </h1>
               <p className="text-xl text-gray-600">
                 Experience the amazing qualities of AI with our ASU experts
