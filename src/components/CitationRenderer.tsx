@@ -1,192 +1,190 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { FileText, ExternalLink } from 'lucide-react';
-import { Citation, CitationReference } from '../types/index';
-import CitationTooltip from './CitationTooltip';
-import { mergeCitationData } from '../utils/citationParser';
+/**
+ * 🔗 Citation Renderer - RAG Citation Display Component
+ * 
+ * Renders citations from RAG sources in an accessible, professional format.
+ * Integrates with the character system to show persona-aware citations.
+ */
+
+import React, { useState } from 'react';
+import { FileText, ExternalLink, ChevronDown, ChevronRight, Quote } from 'lucide-react';
+
+export interface Citation {
+  id: string;
+  source: string;
+  type: 'rag' | 'knowledge' | 'external' | 'document';
+  content: string;
+  relevance: number;
+  url?: string;
+  page?: number;
+  timestamp?: Date;
+  documentId?: string;
+}
+
+export interface CitationReference {
+  citationId: string;
+  inlineText: string;
+  position: number;
+}
 
 interface CitationRendererProps {
-  content: string;
   citations: Citation[];
-  citationReferences: CitationReference[];
+  showRelevanceScores?: boolean;
+  maxPreviewLength?: number;
   className?: string;
 }
 
-const CitationRenderer: React.FC<CitationRendererProps> = ({
-  content,
-  citations,
-  citationReferences,
-  className = ''
+interface CitationCardProps {
+  citation: Citation;
+  showRelevance?: boolean;
+  maxPreviewLength?: number;
+}
+
+const CitationCard: React.FC<CitationCardProps> = ({ 
+  citation, 
+  showRelevance = false, 
+  maxPreviewLength = 200 
 }) => {
-  // Merge citation data for easier processing
-  const citationData = mergeCitationData(citations, citationReferences);
-
-  // Sort citation references by start index for proper processing
-  const sortedReferences = [...citationReferences].sort((a, b) => a.startIndex - b.startIndex);
-
-  // Process content to inject citation markers
-  const processContentWithCitations = () => {
-    if (!sortedReferences.length) {
-      return content;
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const getTypeIcon = (type: Citation['type']) => {
+    switch (type) {
+      case 'rag':
+      case 'document':
+        return <FileText className="w-4 h-4 text-blue-600" />;
+      case 'external':
+        return <ExternalLink className="w-4 h-4 text-green-600" />;
+      case 'knowledge':
+        return <Quote className="w-4 h-4 text-purple-600" />;
+      default:
+        return <FileText className="w-4 h-4 text-gray-600" />;
     }
-
-    let processedContent = '';
-    let lastIndex = 0;
-
-    sortedReferences.forEach((ref, index) => {
-      const citation = citations.find(c => c.id === ref.citationId);
-      if (!citation) return;
-
-      // Add content before citation
-      processedContent += content.slice(lastIndex, ref.startIndex);
-
-      // Add the cited text with citation marker
-      const citedText = content.slice(ref.startIndex, ref.endIndex || ref.startIndex + ref.text.length);
-      processedContent += `${citedText}[CITATION:${index}]`;
-
-      lastIndex = ref.endIndex || ref.startIndex + ref.text.length;
-    });
-
-    // Add remaining content
-    processedContent += content.slice(lastIndex);
-
-    return processedContent;
   };
-
-  // Custom renderer for markdown that handles citation markers
-  const renderWithCitations = (children: React.ReactNode): React.ReactNode => {
-    // Convert children to string safely
-    const text = typeof children === 'string' ? children : 
-                 Array.isArray(children) ? children.join('') :
-                 children?.toString() || '';
-    
-    const citationPattern = /\[CITATION:(\d+)\]/g;
-    const parts = text.split(citationPattern);
-    
-    return parts.map((part, index) => {
-      // If this part is a citation number
-      if (index % 2 === 1) {
-        const citationIndex = parseInt(part);
-        const citationItem = citationData[citationIndex];
-        
-        if (citationItem) {
-          return (
-            <CitationTooltip
-              key={`citation-${citationIndex}`}
-              citation={citationItem.citation}
-              citationNumber={citationIndex + 1}
-            >
-              <span />
-            </CitationTooltip>
-          );
-        }
-      }
-      
-      // Regular text
-      return <span key={index}>{part}</span>;
-    });
+  
+  const getTypeColor = (type: Citation['type']) => {
+    switch (type) {
+      case 'rag':
+      case 'document':
+        return 'border-blue-200 bg-blue-50';
+      case 'external':
+        return 'border-green-200 bg-green-50';
+      case 'knowledge':
+        return 'border-purple-200 bg-purple-50';
+      default:
+        return 'border-gray-200 bg-gray-50';
+    }
   };
-
-  // Process the content
-  const processedContent = processContentWithCitations();
-
+  
+  const truncatedContent = citation.content.length > maxPreviewLength
+    ? citation.content.substring(0, maxPreviewLength) + '...'
+    : citation.content;
+  
+  const contentToShow = isExpanded ? citation.content : truncatedContent;
+  const needsTruncation = citation.content.length > maxPreviewLength;
+  
   return (
-    <div className={`citation-renderer ${className}`}>
-      <div className="prose prose-sm max-w-none text-gray-900
-        prose-headings:text-gray-900 prose-headings:font-semibold
-        prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
-        prose-p:text-gray-900 prose-p:leading-relaxed
-        prose-strong:text-gray-900 prose-strong:font-semibold
-        prose-em:text-gray-700
-        prose-ul:text-gray-900 prose-ol:text-gray-900
-        prose-li:text-gray-900 prose-li:marker:text-gray-500
-        prose-code:text-[#191919] prose-code:bg-[#FFC627] prose-code:bg-opacity-20 prose-code:px-1 prose-code:rounded
-        prose-pre:bg-gray-50 prose-pre:text-gray-800
-        prose-blockquote:text-gray-700 prose-blockquote:border-l-gray-300
-        prose-hr:border-gray-200">
-        <ReactMarkdown 
-          remarkPlugins={[remarkGfm]}
-          components={{
-            // Custom text renderer to handle citations
-            p: ({ children }) => (
-              <p>{renderWithCitations(children)}</p>
-            ),
-            li: ({ children }) => (
-              <li>{renderWithCitations(children)}</li>
-            ),
-            // Handle other elements that might contain citations
-            span: ({ children }) => (
-              <span>{renderWithCitations(children)}</span>
-            ),
-          }}
-        >
-          {processedContent}
-        </ReactMarkdown>
-      </div>
-
-      {/* Citations list at the bottom */}
-      {citations.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-            <FileText className="w-4 h-4 text-[#FFC627] mr-2" />
-            References ({citations.length})
-          </h4>
-          <div className="space-y-2">
-            {citations.map((citation, index) => (
-              <div key={citation.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="flex-shrink-0">
-                  <span className="inline-flex items-center justify-center w-6 h-6 bg-[#FFC627] bg-opacity-20 text-[#191919] text-xs font-semibold rounded">
-                    {index + 1}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <h5 className="text-sm font-medium text-gray-900 truncate">
-                      {citation.title}
-                    </h5>
-                    <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
-                      {citation.type}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                    {citation.excerpt}
-                  </p>
-                  <div className="flex items-center space-x-4 mt-2">
-                    {citation.documentName && (
-                      <span className="text-xs text-gray-500 flex items-center">
-                        <FileText className="w-3 h-3 mr-1" />
-                        {citation.documentName}
-                      </span>
-                    )}
-                    {citation.pageNumber && (
-                      <span className="text-xs text-gray-500">
-                        Page {citation.pageNumber}
-                      </span>
-                    )}
-                    {citation.url && (
-                      <a
-                        href={citation.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-[#FFC627] hover:text-yellow-600 underline flex items-center"
-                      >
-                        <ExternalLink className="w-3 h-3 mr-1" />
-                        Open Link
-                      </a>
-                    )}
-                    {citation.relevanceScore && (
-                      <span className="text-xs text-gray-500">
-                        {Math.round(citation.relevanceScore * 100)}% relevant
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+    <div className={`border rounded-lg p-3 ${getTypeColor(citation.type)} hover:shadow-sm transition-shadow`}>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center space-x-2 flex-1 min-w-0">
+          {getTypeIcon(citation.type)}
+          <div className="min-w-0 flex-1">
+            <h4 className="text-sm font-medium text-gray-900 truncate">
+              {citation.source}
+            </h4>
+            <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+              <span className="capitalize">{citation.type}</span>
+              {citation.page && (
+                <span>Page {citation.page}</span>
+              )}
+              {showRelevance && (
+                <span className="text-blue-600 font-medium">
+                  {Math.round(citation.relevance * 100)}% relevance
+                </span>
+              )}
+              {citation.timestamp && (
+                <span>{citation.timestamp.toLocaleDateString()}</span>
+              )}
+            </div>
           </div>
         </div>
-      )}
+        
+        {citation.url && (
+          <a
+            href={citation.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
+            title="Open source"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        )}
+      </div>
+      
+      {/* Content */}
+      <div className="text-sm text-gray-700 leading-relaxed">
+        <p className="whitespace-pre-wrap">{contentToShow}</p>
+        
+        {needsTruncation && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-2 flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronDown className="w-3 h-3" />
+                <span>Show less</span>
+              </>
+            ) : (
+              <>
+                <ChevronRight className="w-3 h-3" />
+                <span>Show more</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CitationRenderer: React.FC<CitationRendererProps> = ({
+  citations,
+  showRelevanceScores = false,
+  maxPreviewLength = 200,
+  className = ''
+}) => {
+  if (!citations || citations.length === 0) {
+    return null;
+  }
+  
+  // Sort citations by relevance (highest first)
+  const sortedCitations = [...citations].sort((a, b) => b.relevance - a.relevance);
+  
+  return (
+    <div className={`space-y-3 ${className}`}>
+      <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
+        <Quote className="w-4 h-4" />
+        <span className="font-medium">
+          Sources ({citations.length})
+        </span>
+        {showRelevanceScores && (
+          <span className="text-xs text-gray-500">
+            • Showing relevance scores
+          </span>
+        )}
+      </div>
+      
+      <div className="space-y-2">
+        {sortedCitations.map((citation, index) => (
+          <CitationCard
+            key={citation.id || `citation-${index}`}
+            citation={citation}
+            showRelevance={showRelevanceScores}
+            maxPreviewLength={maxPreviewLength}
+          />
+        ))}
+      </div>
     </div>
   );
 };

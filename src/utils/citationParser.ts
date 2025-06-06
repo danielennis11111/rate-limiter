@@ -1,224 +1,262 @@
-import { Citation, CitationReference } from '../types/index';
+/**
+ * 🔍 Citation Parser - Extract and Format RAG Citations
+ * 
+ * Parses RAG search results and converts them into proper citation objects
+ * for display in the CitationRenderer component.
+ */
 
-export interface ParsedContent {
-  text: string;
-  citations: Citation[];
-  citationReferences: CitationReference[];
+import { Citation, CitationReference } from '../components/CitationRenderer';
+
+// Interface for RAG search results (matches your existing EnhancedRAG structure)
+export interface RAGResult {
+  chunk: {
+    content: string;
+    startIndex: number;
+    endIndex: number;
+  };
+  document: {
+    id: string;
+    name: string;
+    type: string;
+    uploadedAt: Date;
+  };
+  relevanceScore: number;
+  context: string;
 }
 
 /**
- * Parse AI response text to extract citations and create references
+ * Convert RAG search results to Citation objects
  */
-export const parseTextWithCitations = (
-  content: string,
-  existingCitations: Citation[] = []
-): ParsedContent => {
-  const citations: Citation[] = [...existingCitations];
-  const citationReferences: CitationReference[] = [];
+export function convertRAGResultsToCitations(ragResults: RAGResult[]): Citation[] {
+  return ragResults.map((result, index) => ({
+    id: `rag-${result.document.id}-${index}`,
+    source: result.document.name,
+    type: 'rag' as const,
+    content: result.chunk.content,
+    relevance: result.relevanceScore,
+    timestamp: result.document.uploadedAt,
+    documentId: result.document.id
+  }));
+}
+
+/**
+ * Parse text content to find inline citation markers
+ * Looks for patterns like [1], [Source: Document], etc.
+ */
+export function parseTextWithCitations(text: string, citations: Citation[]): {
+  cleanText: string;
+  references: CitationReference[];
+} {
+  const references: CitationReference[] = [];
+  let cleanText = text;
   
-  // Pattern to match citation markers like [Citation: title - excerpt] or [Source: URL]
-  const citationPattern = /\[(Citation|Source|Ref|Reference):\s*([^\]]+)\]/gi;
-  
-  let processedText = content;
+  // Pattern to match citation markers: [1], [Source: Doc], etc.
+  const citationPattern = /\[([^\]]+)\]/g;
   let match;
   let offset = 0;
   
-  while ((match = citationPattern.exec(content)) !== null) {
+  while ((match = citationPattern.exec(text)) !== null) {
     const fullMatch = match[0];
-    const citationType = match[1].toLowerCase();
-    const citationContent = match[2];
+    const citationContent = match[1];
+    const startPos = match.index - offset;
     
-    // Parse citation content
-    const citation = parseCitationContent(citationContent, citationType);
+    // Try to find matching citation
+    let matchingCitation: Citation | null = null;
     
-    if (citation) {
-      citations.push(citation);
-      
-      // Calculate position in processed text (accounting for previous replacements)
-      const originalStart = match.index;
-      const originalEnd = match.index + fullMatch.length;
-      const adjustedStart = originalStart - offset;
-      
-      // Create citation reference
-      const citationRef: CitationReference = {
-        citationId: citation.id,
-        startIndex: adjustedStart,
-        endIndex: adjustedStart,
-        text: citationContent.split(' - ')[0] || citationContent
-      };
-      
-      citationReferences.push(citationRef);
-      
-      // Replace citation marker with just the reference text
-      const replacement = citationRef.text;
-      processedText = processedText.slice(0, adjustedStart) + 
-                    replacement + 
-                    processedText.slice(adjustedStart + fullMatch.length);
-      
-      // Update offset for next replacements
-      offset += fullMatch.length - replacement.length;
+    // Check if it's a number reference
+    const numberMatch = citationContent.match(/^\d+$/);
+    if (numberMatch) {
+      const citationIndex = parseInt(numberMatch[0]) - 1;
+      if (citationIndex >= 0 && citationIndex < citations.length) {
+        matchingCitation = citations[citationIndex];
+      }
+         } else {
+       // Check if it matches a source name
+       matchingCitation = citations.find(c => 
+         c.source.toLowerCase().includes(citationContent.toLowerCase()) ||
+         citationContent.toLowerCase().includes(c.source.toLowerCase())
+       ) || null;
+     }
+    
+    if (matchingCitation) {
+      references.push({
+        citationId: matchingCitation.id,
+        inlineText: citationContent,
+        position: startPos
+      });
     }
+    
+    // Remove the citation marker from clean text
+    cleanText = cleanText.slice(0, startPos) + cleanText.slice(startPos + fullMatch.length);
+    offset += fullMatch.length;
   }
   
   return {
-    text: processedText,
-    citations,
-    citationReferences
+    cleanText,
+    references
   };
-};
+}
 
 /**
- * Parse citation content from various formats
+ * Extract relevant quotes from citations based on query terms
  */
-const parseCitationContent = (content: string, type: string): Citation | null => {
-  try {
-    const id = generateCitationId();
-    const timestamp = new Date();
+export function extractRelevantQuotes(
+  citations: Citation[], 
+  queryTerms: string[], 
+  maxQuoteLength: number = 150
+): Citation[] {
+  return citations.map(citation => {
+    const content = citation.content.toLowerCase();
+    const terms = queryTerms.map(term => term.toLowerCase());
     
-    // Handle URL citations
-    if (content.includes('http://') || content.includes('https://')) {
-      const urlMatch = content.match(/(https?:\/\/[^\s]+)/);
-      if (urlMatch) {
-        const url = urlMatch[1];
-        const title = content.replace(url, '').trim() || extractTitleFromUrl(url);
-        
-        return {
-          id,
-          type: 'web',
-          title,
-          url,
-          excerpt: content,
-          timestamp,
-          relevanceScore: 0.8
-        };
+    // Find best matching excerpt
+    let bestMatch = '';
+    let bestScore = 0;
+    
+    // Split content into sentences
+    const sentences = citation.content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i].trim();
+      if (sentence.length === 0) continue;
+      
+      // Check how many query terms appear in this sentence
+      const score = terms.reduce((acc, term) => {
+        return acc + (sentence.toLowerCase().includes(term) ? 1 : 0);
+      }, 0);
+      
+      if (score > bestScore || (score === bestScore && sentence.length < bestMatch.length)) {
+        bestScore = score;
+        bestMatch = sentence;
       }
     }
     
-    // Handle document citations with page numbers
-    const pageMatch = content.match(/^(.+?)\s*-\s*(.+?)(?:\s*\(p\.\s*(\d+)\))?$/);
-    if (pageMatch) {
-      const [, title, excerpt, pageNum] = pageMatch;
-      
-      return {
-        id,
-        type: 'document',
-        title: title.trim(),
-        excerpt: excerpt.trim(),
-        pageNumber: pageNum ? parseInt(pageNum) : undefined,
-        timestamp,
-        relevanceScore: 0.9
-      };
+    // If no good match found, use beginning of content
+    if (!bestMatch || bestScore === 0) {
+      bestMatch = citation.content.substring(0, maxQuoteLength);
+      if (citation.content.length > maxQuoteLength) {
+        bestMatch += '...';
+      }
     }
     
-    // Handle simple title - excerpt format
-    const simpleMatch = content.match(/^(.+?)\s*-\s*(.+)$/);
-    if (simpleMatch) {
-      const [, title, excerpt] = simpleMatch;
-      
-      return {
-        id,
-        type: 'document',
-        title: title.trim(),
-        excerpt: excerpt.trim(),
-        timestamp,
-        relevanceScore: 0.7
-      };
-    }
-    
-    // Fallback: treat entire content as title
     return {
-      id,
-      type: 'document',
-      title: content.trim(),
-      excerpt: content.trim(),
-      timestamp,
-      relevanceScore: 0.6
+      ...citation,
+      content: bestMatch
     };
-    
-  } catch (error) {
-    console.error('Error parsing citation content:', error);
-    return null;
-  }
-};
+  });
+}
 
 /**
- * Extract title from URL
+ * Create citation markers for text based on RAG results
  */
-const extractTitleFromUrl = (url: string): string => {
-  try {
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname.replace('www.', '');
-    const pathname = urlObj.pathname.split('/').filter(Boolean).pop();
+export function insertCitationMarkers(
+  text: string, 
+  ragResults: RAGResult[]
+): { 
+  textWithCitations: string; 
+  citations: Citation[] 
+} {
+  const citations = convertRAGResultsToCitations(ragResults);
+  let textWithCitations = text;
+  
+  // For now, append citation numbers at the end of relevant sentences
+  // This is a simple implementation - could be enhanced with NLP
+  citations.forEach((citation, index) => {
+    const citationNumber = index + 1;
+    const marker = ` [${citationNumber}]`;
     
-    if (pathname) {
-      return `${hostname} - ${pathname.replace(/[-_]/g, ' ')}`;
+    // Try to find a good place to insert the citation marker
+    // Look for sentences that contain similar content
+    const sentences = textWithCitations.split(/([.!?]+)/);
+    
+    for (let i = 0; i < sentences.length; i += 2) { // Every other element is a sentence
+      const sentence = sentences[i];
+      if (sentence && sentence.trim().length > 10) {
+        // Simple similarity check - could be enhanced
+        const sentenceLower = sentence.toLowerCase();
+        const citationWords = citation.content.toLowerCase().split(/\s+/).slice(0, 5);
+        
+        const matchCount = citationWords.reduce((count, word) => {
+          return count + (sentenceLower.includes(word) ? 1 : 0);
+        }, 0);
+        
+        if (matchCount >= 2) {
+          sentences[i] = sentence + marker;
+          break;
+        }
+      }
     }
     
-    return hostname;
-  } catch {
-    return url;
+    textWithCitations = sentences.join('');
+  });
+  
+  return {
+    textWithCitations,
+    citations
+  };
+}
+
+/**
+ * Generate a bibliography from citations
+ */
+export function generateBibliography(citations: Citation[]): string {
+  const sortedCitations = [...citations].sort((a, b) => a.source.localeCompare(b.source));
+  
+  return sortedCitations.map((citation, index) => {
+    const number = index + 1;
+    const date = citation.timestamp ? citation.timestamp.toLocaleDateString() : 'Unknown date';
+    
+    switch (citation.type) {
+      case 'rag':
+      case 'document':
+        return `${number}. ${citation.source}. ${date}. Retrieved from uploaded document.`;
+      case 'external':
+        return `${number}. ${citation.source}. ${date}. ${citation.url || 'External source'}.`;
+      case 'knowledge':
+        return `${number}. ${citation.source}. Internal knowledge base.`;
+      default:
+        return `${number}. ${citation.source}. ${date}.`;
+    }
+  }).join('\n');
+}
+
+/**
+ * Calculate citation quality score based on relevance and content length
+ */
+export function calculateCitationQuality(citation: Citation): number {
+  let score = citation.relevance * 0.7; // 70% weight for relevance
+  
+  // Content length factor (prefer substantial but not overwhelming content)
+  const contentLength = citation.content.length;
+  let lengthScore = 0;
+  
+  if (contentLength >= 50 && contentLength <= 300) {
+    lengthScore = 1; // Ideal length
+  } else if (contentLength >= 20 && contentLength <= 500) {
+    lengthScore = 0.8; // Good length
+  } else if (contentLength >= 10) {
+    lengthScore = 0.5; // Acceptable length
   }
-};
+  
+  score += lengthScore * 0.3; // 30% weight for length appropriateness
+  
+  return Math.min(score, 1); // Cap at 1.0
+}
 
 /**
- * Generate unique citation ID
+ * Filter and rank citations by quality
  */
-const generateCitationId = (): string => {
-  return `cite_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
-
-/**
- * Create citation from PDF document reference
- */
-export const createPDFCitation = (
-  documentId: string,
-  documentName: string,
-  pageNumber: number,
-  excerpt: string,
-  title?: string
-): Citation => {
-  return {
-    id: generateCitationId(),
-    type: 'pdf',
-    title: title || `${documentName} (Page ${pageNumber})`,
-    documentId,
-    documentName,
-    pageNumber,
-    excerpt,
-    timestamp: new Date(),
-    relevanceScore: 0.85
-  };
-};
-
-/**
- * Create citation from web search result
- */
-export const createWebCitation = (
-  title: string,
-  url: string,
-  excerpt: string,
-  relevanceScore: number = 0.8
-): Citation => {
-  return {
-    id: generateCitationId(),
-    type: 'web',
-    title,
-    url,
-    excerpt,
-    timestamp: new Date(),
-    relevanceScore
-  };
-};
-
-/**
- * Merge citation references for text rendering
- */
-export const mergeCitationData = (
-  citations: Citation[],
-  references: CitationReference[]
-): Array<{ citation: Citation; reference: CitationReference }> => {
-  return references.map(ref => {
-    const citation = citations.find(c => c.id === ref.citationId);
-    return citation ? { citation, reference: ref } : null;
-  }).filter(Boolean) as Array<{ citation: Citation; reference: CitationReference }>;
-}; 
+export function filterAndRankCitations(
+  citations: Citation[], 
+  minQuality: number = 0.3,
+  maxCitations: number = 5
+): Citation[] {
+  return citations
+    .map(citation => ({
+      ...citation,
+      quality: calculateCitationQuality(citation)
+    }))
+    .filter(citation => citation.quality >= minQuality)
+    .sort((a, b) => b.quality - a.quality)
+    .slice(0, maxCitations);
+} 

@@ -17,9 +17,9 @@ import TokenUsagePreview from './TokenUsagePreview';
 import NotificationSystem, { Notification } from './NotificationSystem';
 import ModelSwitcher from './ModelSwitcher';
 import ProgressiveThinkingIndicator from './ProgressiveThinkingIndicator';
-// import CitationRenderer from './CitationRenderer';
+import CitationRenderer from './CitationRenderer';
 import InlineRAGControls from './InlineRAGControls';
-// import { parseTextWithCitations } from '../utils/citationParser';
+import { convertRAGResultsToCitations, filterAndRankCitations } from '../utils/citationParser';
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -95,6 +95,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [actualModelUsed, setActualModelUsed] = useState<string>('');
   const [ragEnabled, setRagEnabled] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<string>('silky-smooth');
+  const [currentCitations, setCurrentCitations] = useState<any[]>([]);
   
   // Persona-specific voice mapping
   const getPersonaVoice = (templateId: string, personaName: string): string => {
@@ -574,6 +575,11 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         });
         
         if (ragResults.length > 0) {
+          // Convert RAG results to citations
+          const ragCitations = convertRAGResultsToCitations(ragResults);
+          const qualityCitations = filterAndRankCitations(ragCitations, 0.2, 5);
+          setCurrentCitations(qualityCitations);
+          
           intelligentRagContext = ragResults
             .map((result, index) => {
               const relevanceInfo = ` (${(result.relevanceScore * 100).toFixed(0)}% relevant)`;
@@ -583,6 +589,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             .join('\n\n---\n\n');
           
           console.log(`🔍 RAG Context Length: ${intelligentRagContext.length} characters`);
+          console.log(`🔗 Generated ${qualityCitations.length} citations from RAG results`);
         } else {
           console.log('🔍 RAG: No relevant content found, falling back to full context if available');
         }
@@ -1126,6 +1133,18 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                   >
                     {voiceStatus.isSpeaking ? '⏸️ Speaking...' : '🔊 Listen'}
                   </button>
+                )}
+                
+                {/* Show citations for assistant messages if available */}
+                {message.role === 'assistant' && currentCitations.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <CitationRenderer 
+                      citations={currentCitations}
+                      showRelevanceScores={true}
+                      maxPreviewLength={150}
+                      className="max-w-none"
+                    />
+                  </div>
                 )}
               </div>
             </div>
