@@ -106,31 +106,10 @@ function analyzeRequest(query, history) {
 }
 
 function createStructuredResponse(userQuery, analysis) {
-  if (analysis.isGreeting && analysis.conversationLength <= 2) {
-    return `# 🧠 **Advanced Llama 4 Scout - Ready for Sophisticated Analysis**
-
-## **Operational Status: Fully Online**
-I'm equipped with Claude Sonnet-level reasoning capabilities and ready to tackle complex challenges with methodical analysis.
-
-## **My Core Capabilities:**
-- **🎯 Strategic Thinking**: Step-by-step analytical reasoning and problem decomposition
-- **📋 Project Planning**: Transform ideas into comprehensive, actionable roadmaps
-- **🤖 AI Integration**: Expert guidance on model selection and technical architecture
-- **⚙️ Technical Analysis**: Deep-dive into systems, implementations, and optimizations
-- **🔍 Risk Assessment**: Identify challenges and develop mitigation strategies
-- **📚 Knowledge Synthesis**: Analyze documentation and provide evidence-based recommendations
-
-## **My Approach:**
-1. **Deep Analysis**: Understand your challenge from multiple angles
-2. **Structured Reasoning**: Break down complex problems systematically
-3. **Comprehensive Planning**: Develop detailed, implementable strategies
-4. **Practical Focus**: Prioritize actionable solutions over theoretical concepts
-5. **Expert Insights**: Provide strategic recommendations based on thorough analysis
-
-## **Ready to Begin:**
-I excel at transforming rough ideas into detailed project plans, solving complex technical challenges, and providing strategic guidance for AI integration and system architecture.
-
-**What project, problem, or challenge would you like me to analyze and help develop?**`;
+  // Handle greetings first, regardless of conversation length
+  if (analysis.isGreeting && userQuery.trim().length < 15) {
+    // Simple, friendly greeting response
+    return generateGreetingResponse(analysis.conversationLength);
   }
 
   if (analysis.isProjectPlanning) {
@@ -466,6 +445,37 @@ function provideProblemSolvingInsight(query) {
 
 function provideComprehensiveInsight(query, analysis) {
   return 'Success requires balancing innovation with practical implementation, always keeping user value and measurable outcomes at the center of decision-making.';
+}
+
+function generateGreetingResponse(conversationLength) {
+  if (conversationLength <= 2) {
+    // First-time introduction
+    return `# 👋 **Hello! I'm Llama 4 Scout**
+
+## **🧠 Advanced AI Assistant Ready**
+I'm equipped with Claude Sonnet-level reasoning capabilities, specializing in transforming ideas into comprehensive project plans.
+
+## **How I Can Help:**
+- **🎯 Strategic Planning**: Break down complex projects into actionable steps
+- **🤖 AI Integration**: Guide you through model selection and technical architecture
+- **⚙️ Problem Solving**: Systematic analysis and practical solutions
+- **📚 Technical Guidance**: Expert advice on implementation and best practices
+
+## **Ready to Start:**
+What project, challenge, or idea would you like me to help you develop? I approach every request with methodical analysis and comprehensive planning.`;
+  } else {
+    // Continuing conversation
+    return `# 👋 **Hello again!**
+
+I'm ready to continue our strategic planning session. I'm here to help with:
+
+- **Project analysis** and comprehensive planning
+- **Technical architecture** and implementation guidance  
+- **Problem-solving** with systematic approaches
+- **AI integration** recommendations and best practices
+
+**What would you like to work on next?** I can dive deep into any aspect of your project or tackle a completely new challenge.`;
+  }
 }
 
 app.listen(port, () => {
