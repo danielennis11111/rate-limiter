@@ -52,13 +52,13 @@ export class UnifiedTTSService {
     this.isInitializing = true;
     
     try {
-      console.log('🔊 Initializing high-quality Bark TTS...');
-      this.localTTSService = new LocalTTSService({ model: 'bark' });
+      console.log('🔊 Initializing Enhanced System TTS...');
+      this.localTTSService = new LocalTTSService({ model: 'enhanced-system' });
       await this.localTTSService.initialize();
       this.isBarkAvailable = true;
-      console.log('✅ Bark TTS ready - high-quality voices available!');
+      console.log('✅ Enhanced System TTS ready - high-quality voices available!');
     } catch (error) {
-      console.warn('⚠️ Bark TTS unavailable, using browser fallback:', error);
+              console.warn('⚠️ Enhanced System TTS unavailable, using browser fallback:', error);
       this.isBarkAvailable = false;
     } finally {
       this.isInitializing = false;

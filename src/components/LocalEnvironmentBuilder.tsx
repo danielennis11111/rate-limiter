@@ -51,7 +51,7 @@ export const LocalEnvironmentBuilder: React.FC<LocalEnvironmentBuilderProps> = (
 
   useEffect(() => {
     // Initialize Local TTS for voice feedback
-    localTTSService.current = new LocalTTSService({ model: 'bark' });
+    localTTSService.current = new LocalTTSService({ model: 'enhanced-system' });
     localTTSService.current.initialize().catch(console.warn);
   }, []);
 

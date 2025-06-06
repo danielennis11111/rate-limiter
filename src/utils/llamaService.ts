@@ -15,22 +15,24 @@ interface LlamaResponse {
 
 export class LlamaService {
   private baseUrl: string;
+  private backendUrl: string;
   private availableModels: string[] = [];
 
   constructor(baseUrl: string = 'http://localhost:11434') {
     this.baseUrl = baseUrl;
+    this.backendUrl = 'http://localhost:3001'; // Our custom backend server
   }
 
-  // Check if Ollama server is running
+  // Check if our backend server is running
   async isServerRunning(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/tags`, {
+      const response = await fetch(`${this.backendUrl}/api/health`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
       return response.ok;
     } catch (error) {
-      console.log('Ollama server not running:', error);
+      console.log('Backend server not running:', error);
       return false;
     }
   }
@@ -108,53 +110,40 @@ ${options.ragContext}
         }
       }
 
-      // Convert model name to Ollama format
-      const ollamaModel = model.includes('3.1') ? 'llama3.1:8b' :
-                         model.includes('3.2-3B') ? 'llama3.2:3b' : 
-                         model.includes('3.2-11B') ? 'llama3.2:11b' :
-                         model.includes('Llama-4') ? 'llama3.1:8b' : // Fallback to 3.1:8b
-                         'llama3.1:8b'; // Default to 3.1:8b as user specified
-
-      // Prepare messages for Ollama format
-      const messageText = processedMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + '\nassistant:';
-
-      const ollamaRequest = {
-        model: ollamaModel,
-        prompt: messageText,
-        options: {
-          temperature: options.temperature || 0.7,
-          top_p: options.topP || 0.9,
-          num_predict: options.maxTokens || 500,
-        },
-        stream: false
-      };
-
-      const response = await fetch(`${this.baseUrl}/api/generate`, {
+      // Use our backend server with OpenAI-compatible API
+      const response = await fetch(`${this.backendUrl}/api/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(ollamaRequest)
+        body: JSON.stringify({
+          model: model, // Pass the model ID directly
+          messages: processedMessages,
+          temperature: options.temperature || 0.7,
+          max_tokens: options.maxTokens || 1000
+        })
       });
 
       if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Backend API error: ${response.status} - ${errorData.message || 'Unknown error'}`);
       }
 
       const data = await response.json();
       
+      // Extract response from OpenAI-compatible format
       return {
-        content: data.response,
-        usage: {
-          prompt_tokens: data.prompt_eval_count || 0,
-          completion_tokens: data.eval_count || 0,
-          total_tokens: (data.prompt_eval_count || 0) + (data.eval_count || 0)
+        content: data.choices[0]?.message?.content || 'No response generated',
+        usage: data.usage || {
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          total_tokens: 0
         },
-        model: ollamaModel
+        model: data.model || model
       };
 
     } catch (error) {
-      console.error('Llama API request failed:', error);
+      console.error('Backend API request failed:', error);
       // Fallback to simulated response
       return this.getSimulatedResponse(messages, model, options);
     }
@@ -181,7 +170,7 @@ ${options.ragContext.substring(0, 500)}${options.ragContext.length > 500 ? '...'
 **Analysis:**
 Based on the content in your documents, I can see specific information that directly relates to your question. When the Ollama server is running, I would provide a detailed analysis combining this document context with AI reasoning to give you comprehensive, accurate answers.
 
-**Note:** This is a simulated response because Ollama is not currently running. Start Ollama with \`ollama serve\` to get real AI-powered responses that properly analyze your documents.`;
+**Note:** This is a simulated response because the backend server is not currently running. Start the backend server with \`cd backend && npm start\` to get real AI-powered responses from the Llama 4 Scout model.`;
     } else {
       simulatedContent = `I understand you're asking about "${lastUserMessage}". 
 
@@ -192,9 +181,9 @@ This is a simulated response because the Llama Stack server isn't currently runn
 3. Provide actionable steps you can take immediately
 4. Help you break down complex problems into manageable parts
 
-To get real AI-powered responses, please start the Llama Stack server with one of your downloaded models.
+To get real AI-powered responses, please start the backend server with \`cd backend && npm start\`.
 
-[Note: Start Ollama server for real AI responses]`;
+[Note: Start backend server for real Llama 4 Scout responses]`;
     }
 
     // Estimate tokens (rough approximation)

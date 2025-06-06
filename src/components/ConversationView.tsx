@@ -1,15 +1,15 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ConversationTemplate, Message, Conversation, Citation, CitationReference } from '../types/index';
+import { ConversationTemplate, Message, Conversation } from '../types/index';
 import { ConversationManager } from '../services/ConversationManager';
 import { ModelManager } from '../services/ModelManager';
 import { PDFProcessor } from '../utils/pdfProcessor';
 import AIServiceRouter from '../services/AIServiceRouter';
-import { estimateTokenCount, calculateTokenUsage, DocumentContext } from '../utils/tokenCounter';
+import { estimateTokenCount } from '../utils/tokenCounter';
 import { EnhancedRAGProcessor } from '../utils/enhancedRAG';
-import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
-import { AvatarTTSService, AvatarSpeechRequest } from '../services/AvatarTTSService';
+// import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
+// import { AvatarTTSService } from '../services/AvatarTTSService';
 import LocalTTSService from '../services/LocalTTSService';
 import LocalEnvironmentBuilder from './LocalEnvironmentBuilder';
 import { getUnifiedTTS } from '../services/UnifiedTTSService';
@@ -17,9 +17,9 @@ import TokenUsagePreview from './TokenUsagePreview';
 import NotificationSystem, { Notification } from './NotificationSystem';
 import ModelSwitcher from './ModelSwitcher';
 import ProgressiveThinkingIndicator from './ProgressiveThinkingIndicator';
-import CitationRenderer from './CitationRenderer';
+// import CitationRenderer from './CitationRenderer';
 import InlineRAGControls from './InlineRAGControls';
-import { parseTextWithCitations } from '../utils/citationParser';
+// import { parseTextWithCitations } from '../utils/citationParser';
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -94,12 +94,40 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [currentModelId, setCurrentModelId] = useState(template.modelId);
   const [actualModelUsed, setActualModelUsed] = useState<string>('');
   const [ragEnabled, setRagEnabled] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState<string>('silky-smooth');
+  
+  // Persona-specific voice mapping
+  const getPersonaVoice = (templateId: string, personaName: string): string => {
+    const personaMappings: Record<string, string> = {
+      'michael-crow': 'michael-crow',        // Southern authority
+      'elizabeth-reilley': 'elizabeth-reilley', // Leadership vision
+      'zohair': 'zohair-developer',          // Introverted genius
+      'jennifer-werner': 'jennifer-tutor',    // Excited tutor
+    };
+    
+    // Check persona name first
+    const lowerPersona = personaName.toLowerCase();
+    for (const [key, voice] of Object.entries(personaMappings)) {
+      if (lowerPersona.includes(key.replace('-', ' '))) {
+        return voice;
+      }
+    }
+    
+    // Template-based mapping
+    if (templateId === 'llama-local' || templateId.includes('llama')) {
+      return 'silky-smooth'; // Default for Llama models
+    }
+    
+    return 'silky-smooth'; // Default fallback
+  };
+  const [selectedBrowserVoice, setSelectedBrowserVoice] = useState<string>('');
+  const [availableBrowserVoices, setAvailableBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiService = useMemo(() => new AIServiceRouter(), []);
   
   // Enhanced Avatar TTS service for Virtual Avatar Builder
-  const avatarTTSService = useRef<AvatarTTSService | null>(null);
+  // const avatarTTSService = useRef<AvatarTTSService | null>(null);
   const localTTSService = useRef<LocalTTSService | null>(null);
   
   // Voice recognition setup
@@ -110,13 +138,28 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     // Initialize Local TTS service for Virtual Avatar Builder
     if (template.id === 'virtual-avatar-builder') {
       // Initialize local TTS service (no API key needed!)
-      localTTSService.current = new LocalTTSService({ model: 'bark' });
+      localTTSService.current = new LocalTTSService({ model: 'enhanced-system' });
       console.log('🎭 Local TTS Service initialized for Virtual Avatar Builder');
       
       // Initialize local TTS in background
       localTTSService.current.initialize().catch(error => {
         console.warn('⚠️ Local TTS initialization failed, will use browser TTS:', error);
       });
+    }
+    
+    // Always initialize local TTS for better voice quality
+    if (!localTTSService.current) {
+      localTTSService.current = new LocalTTSService({ model: 'enhanced-system' });
+      localTTSService.current.initialize().catch(error => {
+        console.warn('⚠️ Local TTS initialization failed, will use browser TTS:', error);
+      });
+    }
+    
+    // Auto-select persona voice based on template
+    const autoVoice = getPersonaVoice(template.id, template.persona);
+    if (autoVoice !== selectedVoice) {
+      setSelectedVoice(autoVoice);
+      console.log(`🎭 Auto-selected voice: ${autoVoice} for ${template.persona}`);
     }
 
     // Initialize voice services
@@ -153,10 +196,26 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     
     if ('speechSynthesis' in window) {
       synthesis.current = window.speechSynthesis;
+      
+      // Load available browser voices
+      const loadVoices = () => {
+        const voices = synthesis.current!.getVoices();
+        setAvailableBrowserVoices(voices);
+        
+        // Set default browser voice to first English voice
+        const defaultVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+        if (defaultVoice) {
+          setSelectedBrowserVoice(defaultVoice.name);
+        }
+      };
+      
+      // Load voices immediately and on change
+      loadVoices();
+      synthesis.current.onvoiceschanged = loadVoices;
     }
     
     setIsVoiceEnabled(!!recognition.current && !!synthesis.current);
-  }, []);
+  }, [selectedVoice, template.id, template.persona]);
 
   // Add notification helper functions
   const addNotification = (notification: Omit<Notification, 'id'>) => {
@@ -238,28 +297,170 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     try {
       setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
       
+      // Add diagnostic logging
+      const status = unifiedTTS.getStatus();
+      console.log('🔊 TTS Status:', status);
+      
       let result;
-      if (isAIResponse) {
-        console.log(`🎙️ ${template.persona}: Speaking AI response with enhanced TTS...`);
-        result = await unifiedTTS.speakAIResponse(text);
+      
+      if (selectedVoice === 'browser') {
+        // Use browser TTS with specific voice
+        const voiceConfig = {
+          preferredVoice: 'auto' as const,
+          fallbackVoice: selectedBrowserVoice,
+          forceMode: 'browser' as const,
+          speed: 1.0
+        };
+        
+        if (isAIResponse) {
+          console.log(`🎙️ ${template.persona}: Speaking AI response with browser voice...`);
+          result = await unifiedTTS.speak(text, voiceConfig);
+        } else {
+          console.log(`🎙️ ${template.persona}: Speaking user feedback with browser voice...`);
+          result = await unifiedTTS.speak(text, voiceConfig);
+        }
       } else {
-        console.log(`🎙️ ${template.persona}: Speaking user feedback...`);
-        result = await unifiedTTS.speakUserFeedback(text);
+        // Use Enhanced System TTS with specific voice profile
+        console.log(`🎙️ ${template.persona}: Speaking with ${selectedVoice} voice...`);
+        console.log(`🔊 Enhanced TTS Available: ${status.barkAvailable}, Initializing: ${status.isInitializing}`);
+        
+        // Use LocalTTSService directly for precise voice control
+        const localTTS = localTTSService.current;
+        console.log(`🎭 Voice Selection Debug: ${selectedVoice}`);
+        console.log(`🔊 Enhanced TTS Status: available=${status.barkAvailable}, initializing=${status.isInitializing}`);
+        
+        if (localTTS && status.barkAvailable) {
+          try {
+            console.log(`🎯 Calling generateSpeech with voice profile: ${selectedVoice}`);
+            const localResult = await localTTS.generateSpeech(text, selectedVoice);
+            
+            console.log(`🎵 Generated audio with: ${localResult.metadata.voiceId} (${localResult.metadata.model})`);
+            
+            // Show notification about which voice is being used
+            const voiceName = selectedVoice.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            if (localResult.metadata.model === 'enhanced-system') {
+              addNotification({
+                title: 'Voice Selection',
+                message: `🎵 Using Enhanced System TTS: ${voiceName} (${localResult.metadata.voiceId})`,
+                type: 'success',
+                duration: 3000
+              });
+            } else if (localResult.metadata.model.includes('enhanced')) {
+              addNotification({
+                title: 'Voice Selection',
+                message: `🎭 Using enhanced ${voiceName} voice simulation`,
+                type: 'info',
+                duration: 3000
+              });
+            } else if (localResult.metadata.model.includes('fallback')) {
+              addNotification({
+                title: 'Voice Selection',
+                message: `🔧 Using fallback ${voiceName} voice`,
+                type: 'warning',
+                duration: 3000
+              });
+            } else {
+              addNotification({
+                title: 'Voice Selection',
+                message: `🔊 Using ${voiceName} voice`,
+                type: 'success',
+                duration: 2000
+              });
+            }
+            
+            // Validate and play the audio
+            if (localResult.audioUrl && localResult.audioBlob && localResult.audioBlob.size > 0) {
+              const audio = new Audio(localResult.audioUrl);
+              
+              // Add error handling for audio playback
+              audio.onerror = (error) => {
+                console.error('🚨 Audio playback failed:', error);
+                addNotification({
+                  type: 'error',
+                  title: 'Audio Error',
+                  message: 'Failed to play generated audio',
+                  duration: 3000
+                });
+              };
+              
+              // Add successful load handler
+              audio.onloadeddata = () => {
+                console.log('✅ Audio loaded successfully, duration:', audio.duration);
+              };
+              
+              try {
+                await audio.play();
+                console.log('🎵 Audio playback started successfully');
+              } catch (playError) {
+                console.error('🚨 Audio play() failed:', playError);
+                addNotification({
+                  type: 'error',
+                  title: 'Playback Error', 
+                  message: 'Could not start audio playback',
+                  duration: 3000
+                });
+              }
+            } else {
+              console.error('❌ Invalid audio data - missing URL or empty blob');
+              throw new Error('Invalid audio data generated');
+            }
+            
+            result = {
+              success: true,
+              audioUrl: localResult.audioUrl,
+              audioBlob: localResult.audioBlob,
+              method: 'enhanced-system' as const,
+              metadata: {
+                duration: localResult.metadata.duration,
+                model: 'enhanced-system',
+                voiceId: localResult.metadata.voiceId
+              }
+            };
+          } catch (error) {
+            console.warn('🎵 Enhanced System TTS failed, using fallback:', error);
+            // Fallback to unified TTS
+            result = await unifiedTTS.speak(text, { 
+              preferredVoice: 'auto' as const,
+              forceMode: 'auto' as const,
+              speed: 1.0 
+            });
+          }
+        } else {
+          console.warn(`🚫 Enhanced TTS not available: localTTS=${!!localTTS}, enhancedAvailable=${status.barkAvailable}`);
+          // Enhanced TTS not available, use unified TTS
+          result = await unifiedTTS.speak(text, { 
+            preferredVoice: 'auto' as const,
+            forceMode: 'auto' as const,
+            speed: 1.0 
+          });
+        }
       }
 
       // Log the method used for transparency
-      if (result.method === 'bark') {
-        console.log(`🐕 Using high-quality Bark TTS with ${result.metadata?.voiceId} voice`);
+      if (result.method === 'enhanced-system') {
+        console.log(`🎵 Using high-quality Enhanced System TTS with ${result.metadata?.voiceId} voice`);
         addNotification({
           type: 'success',
           title: 'Enhanced Voice',
-          message: 'Using enhanced Bark voice synthesis',
+          message: `Using Enhanced ${selectedVoice} voice`,
           duration: 2000
         });
       } else if (result.method === 'browser') {
-        console.log(`🔊 Using browser TTS fallback with ${result.metadata?.voiceId} voice`);
+        console.log(`🔊 Using browser TTS with ${result.metadata?.voiceId} voice`);
+        addNotification({
+          type: 'info',
+          title: 'Browser Voice',
+          message: `Using ${selectedBrowserVoice || 'system'} voice`,
+          duration: 2000
+        });
       } else {
         console.warn('⚠️ TTS failed:', result.error);
+        addNotification({
+          type: 'error',
+          title: 'Voice Error',
+          message: result.error || 'TTS failed',
+          duration: 3000
+        });
       }
 
       if (!result.success) {
@@ -280,7 +481,40 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         isSpeaking: false, 
         error: 'Voice synthesis failed' 
       }));
+      
+      addNotification({
+        type: 'error',
+        title: 'Voice Error',
+        message: 'Voice synthesis failed',
+        duration: 3000
+      });
     }
+  };
+
+  // Add TTS diagnostic function
+  const testTTS = async () => {
+    const unifiedTTS = getUnifiedTTS();
+    const status = unifiedTTS.getStatus();
+    
+    console.log('🔊 TTS Diagnostic:', status);
+    
+    const voiceInfo = selectedVoice === 'browser' 
+      ? `${selectedVoice} (${selectedBrowserVoice})` 
+      : selectedVoice;
+    
+    addNotification({
+      type: 'info',
+      title: 'TTS Status',
+      message: `Voice: ${voiceInfo} | Enhanced: ${status.barkAvailable ? '✅' : '❌'}, Browser: ${status.browserAvailable ? '✅' : '❌'}`,
+      duration: 5000
+    });
+    
+    // Test with a simple phrase that mentions the current voice
+    const testPhrase = selectedVoice === 'browser' 
+      ? `Testing ${selectedBrowserVoice} browser voice synthesis` 
+      : `Testing ${selectedVoice} Enhanced voice synthesis`;
+    
+    await speakText(testPhrase, false);
   };
 
   const stopSpeaking = () => {
@@ -380,7 +614,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       );
 
       let fullContent = '';
-      let wasRateLimited = false;
 
       try {
         for await (const chunk of stream) {
@@ -456,8 +689,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         
         // Check for rate limiting
         if (streamError?.message?.startsWith('RATE_LIMITED:')) {
-          wasRateLimited = true;
-          const [_, originalModel, errorMsg] = streamError.message.split(':');
+          const [, originalModel] = streamError.message.split(':');
           
           // Show rate limit notification
           addNotification({
@@ -482,7 +714,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
         // Check for automatic fallbacks
         if (streamError?.message?.startsWith('FALLBACK:')) {
-          const [_, originalModel, reason] = streamError.message.split(':');
+          const [, originalModel, reason] = streamError.message.split(':');
           
           addNotification({
             type: 'info',
@@ -656,6 +888,78 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                   </svg>
                 </button>
               )}
+              
+              {/* Voice Selector */}
+              <div className="relative">
+                <select
+                  value={selectedVoice}
+                  onChange={(e) => setSelectedVoice(e.target.value)}
+                  className="text-xs bg-white border border-gray-300 rounded px-2 py-1 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-[#FFC627] focus:border-[#FFC627]"
+                  disabled={voiceStatus.isSpeaking}
+                  title="Select voice type"
+                >
+                  {/* Enhanced System TTS Voices */}
+                  <optgroup label="🐕 Default Voices">
+                    <option value="silky-smooth">🎭 Silky Smooth</option>
+                    <option value="scout-professional">💼 Professional</option>
+                    <option value="scout-friendly">😊 Friendly</option>
+                    <option value="scout-storyteller">📖 Storyteller</option>
+                    <option value="scout-quick">⚡ Quick</option>
+                  </optgroup>
+                  
+                  {/* Persona Voices */}
+                  <optgroup label="👥 ASU Personas">
+                    <option value="michael-crow">🤠 Michael Crow (Southern)</option>
+                    <option value="elizabeth-reilley">🚀 Elizabeth Reilley (Vision)</option>
+                    <option value="zohair-developer">💻 Zohair (Developer)</option>
+                    <option value="jennifer-tutor">🎓 Jennifer (Tutor)</option>
+                  </optgroup>
+                  
+                  {/* Additional Test Voices */}
+                  <optgroup label="🎨 Test Voices">
+                    <option value="natural-conversational">💬 Natural</option>
+                    <option value="warm-narrator">🔥 Warm Narrator</option>
+                    <option value="technical-expert">🔬 Technical Expert</option>
+                    <option value="energetic-presenter">⚡ Energetic</option>
+                  </optgroup>
+                  
+                  {/* Browser Fallback */}
+                  <optgroup label="🔊 System Voices">
+                    <option value="browser">🔊 Browser TTS</option>
+                  </optgroup>
+                </select>
+              </div>
+              
+              {/* Browser Voice Selector (when browser mode is selected) */}
+              {selectedVoice === 'browser' && availableBrowserVoices.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={selectedBrowserVoice}
+                    onChange={(e) => setSelectedBrowserVoice(e.target.value)}
+                    className="text-xs bg-white border border-gray-300 rounded px-2 py-1 text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-[#FFC627] focus:border-[#FFC627] max-w-32"
+                    disabled={voiceStatus.isSpeaking}
+                    title="Select browser voice"
+                  >
+                    {availableBrowserVoices
+                      .filter(voice => voice.lang.startsWith('en'))
+                      .map((voice) => (
+                        <option key={voice.name} value={voice.name}>
+                          {voice.name.split(' ')[0]} ({voice.lang})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+              
+              {/* TTS Diagnostic Button */}
+              <button
+                onClick={testTTS}
+                className="p-2 text-[#FFC627] hover:bg-yellow-50 rounded-lg transition-colors"
+                title="Test voice synthesis"
+                disabled={voiceStatus.isSpeaking}
+              >
+                🐕
+              </button>
               
               <div className="flex items-center space-x-1 text-xs text-gray-500">
                 {voiceStatus.isSpeaking && (
@@ -951,12 +1255,12 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         {/* AI Disclaimer */}
         <div className="mt-3 text-center">
           <p className="text-xs text-gray-500">
-            Users are speaking with a synthetic version of {template.persona} created with Generative AI
+            You are speaking with a synthetic version of {template.persona} created with Generative AI
           </p>
         </div>
       </div>
     </div>
   );
-};
-
+  };
+  
 export default ConversationView; 

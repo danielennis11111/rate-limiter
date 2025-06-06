@@ -155,41 +155,14 @@ export class ModelManager {
         isMultimodal: false
       },
       
-      // 🦙 Llama 4 Models (Meta's Official) - Available via backend
+      // 🕵️ Llama 4 Scout (Official Meta CLI) - Available locally
       {
         id: 'llama4-scout',
-        name: 'Llama 4 Scout (CLI)',
-        description: 'Official Llama 4 Scout with CLI interface for advanced reasoning',
+        name: 'Llama 4 Scout ✅',
+        description: 'Advanced 17B parameter reconnaissance model via official Meta Llama CLI - locally available',
         status: 'offline',
-        capabilities: ['advanced-reasoning', 'cli-interface', 'conversation', 'planning', 'debugging'],
-        maxTokens: 131072,
-        isMultimodal: false
-      },
-      {
-        id: 'llama4-maverick',
-        name: 'Llama 4 Maverick (API)',
-        description: 'Official Llama 4 Maverick with Ollama API for fast processing',
-        status: 'offline',
-        capabilities: ['fast-processing', 'api-interface', 'conversation', 'real-time', 'production'],
-        maxTokens: 131072,
-        isMultimodal: false
-      },
-      {
-        id: 'Llama3.2-3B-Instruct',
-        name: 'Llama 3.2 3B Instruct (✅ Downloaded)',
-        description: 'Efficient instruction-following model - locally available',
-        status: 'offline',
-        capabilities: ['conversation', 'instructions', 'efficiency', 'general-tasks'],
-        maxTokens: 128000, // 128K tokens
-        isMultimodal: false
-      },
-      {
-        id: 'Llama-4-Maverick-17B-128E-Instruct',
-        name: 'Llama 4 Maverick 17B (✅ Downloaded)',
-        description: 'Faster processing model with 1M context - locally available for real-time conversations',
-        status: 'offline',
-        capabilities: ['fast-processing', 'conversation', 'planning', 'efficiency', 'real-time'],
-        maxTokens: 1048576, // 1M tokens
+        capabilities: ['advanced-reasoning', 'strategic-planning', 'analysis', 'conversation', 'problem-solving', 'local-processing'],
+        maxTokens: 16384, // 16K tokens context window
         isMultimodal: false
       }
     ];
@@ -216,8 +189,8 @@ export class ModelManager {
         // Check Gemini service
         return await this.checkGeminiStatus(modelId, startTime);
       } else {
-        // Check Ollama/Llama service
-        return await this.checkOllamaStatus(modelId, startTime);
+        // Check Llama CLI service
+        return await this.checkLlamaStatus(modelId, startTime);
       }
     } catch (error) {
       const status: ModelStatus = {
@@ -411,61 +384,58 @@ export class ModelManager {
     }
   }
 
-  private async checkOllamaStatus(modelId: string, startTime: number): Promise<ModelStatus> {
+  private async checkLlamaStatus(modelId: string, startTime: number): Promise<ModelStatus> {
     try {
-      // Check for locally downloaded Llama CLI models first
+      // Check for locally downloaded Llama CLI models
       if (await this.checkLocalLlamaModel(modelId)) {
-        const responseTime = Date.now() - startTime;
-        const status: ModelStatus = {
-          modelId,
-          isRunning: true,
-          lastChecked: new Date(),
-          responseTime,
-          additionalInfo: 'Local Llama CLI model available'
-        };
+        // Check if backend server is running for CLI models
+        try {
+          const backendResponse = await fetch('http://localhost:3001/api/health');
+          const isBackendRunning = backendResponse.ok;
+          
+          const responseTime = Date.now() - startTime;
+          const status: ModelStatus = {
+            modelId,
+            isRunning: isBackendRunning,
+            lastChecked: new Date(),
+            responseTime,
+            additionalInfo: isBackendRunning ? 'Backend server and CLI model available' : 'CLI model available, backend server offline'
+          };
 
-        const model = this.models.get(modelId);
-        if (model) {
-          model.status = 'online';
+          const model = this.models.get(modelId);
+          if (model) {
+            model.status = isBackendRunning ? 'online' : 'limited';
+          }
+          this.statusCache.set(modelId, status);
+
+          console.log(`${isBackendRunning ? '✅' : '🟡'} Llama CLI ${modelId}: ${isBackendRunning ? 'online' : 'limited'} (${responseTime}ms)`);
+          return status;
+        } catch (backendError) {
+          // CLI model exists but backend is not running
+          const responseTime = Date.now() - startTime;
+          const status: ModelStatus = {
+            modelId,
+            isRunning: false,
+            lastChecked: new Date(),
+            responseTime,
+            additionalInfo: 'CLI model available, backend server not running'
+          };
+
+          const model = this.models.get(modelId);
+          if (model) {
+            model.status = 'limited';
+          }
+          this.statusCache.set(modelId, status);
+
+          console.log(`🟡 Llama CLI ${modelId}: limited (${responseTime}ms) - Backend offline`);
+          return status;
         }
-        this.statusCache.set(modelId, status);
-
-        console.log(`✅ Local Llama ${modelId}: online (${responseTime}ms) - Local CLI model`);
-        return status;
       }
 
-      // Check if Ollama is running and model is available
-      const response = await fetch('http://localhost:11434/api/tags');
-      
-      if (!response.ok) {
-        throw new Error('Ollama server not running');
-      }
-
-      const data = await response.json();
-      const availableModels = data.models || [];
-      const isModelAvailable = availableModels.some((m: any) => 
-        m.name.includes(modelId.split(':')[0])
-      );
-
-      const responseTime = Date.now() - startTime;
-      const status: ModelStatus = {
-        modelId,
-        isRunning: isModelAvailable,
-        lastChecked: new Date(),
-        responseTime,
-        additionalInfo: isModelAvailable ? 'Ollama model available' : 'Model not found in Ollama'
-      };
-
-      const model = this.models.get(modelId);
-      if (model) {
-        model.status = isModelAvailable ? 'online' : 'offline';
-      }
-      this.statusCache.set(modelId, status);
-
-      console.log(`${isModelAvailable ? '✅' : '❌'} Ollama ${modelId}: ${isModelAvailable ? 'online' : 'offline'} (${responseTime}ms)`);
-      return status;
+      // Model not found locally
+      throw new Error('Llama CLI model not found');
     } catch (error) {
-      console.error(`❌ Ollama ${modelId} status check failed:`, error);
+      console.error(`❌ Llama CLI ${modelId} status check failed:`, error);
       throw error;
     }
   }
@@ -480,9 +450,7 @@ export class ModelManager {
       
       // Check for known downloaded models based on user confirmation
       const knownLocalModels = [
-        'llama4-scout', // Official Llama 4 Scout (CLI) - confirmed downloaded
-        'Llama3.2-3B-Instruct', // 799MB - confirmed downloaded
-                  'llama4-maverick' // Official Llama 4 Maverick (Ollama) - confirmed downloaded
+        'llama4-scout' // Llama 4 Scout (17B) - confirmed downloaded via official Meta CLI
       ];
       
       const isAvailable = knownLocalModels.includes(modelId);

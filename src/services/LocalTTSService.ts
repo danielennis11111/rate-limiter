@@ -1,7 +1,8 @@
-import { AvatarVoiceProfile, AvatarSpeechRequest, AvatarSpeechResponse } from './AvatarTTSService';
+import { AvatarSpeechRequest, AvatarSpeechResponse } from './AvatarTTSService';
+import EnhancedSystemTTS from './EnhancedSystemTTS';
 
 export interface LocalTTSConfig {
-  model: 'bark' | 'speecht5' | 'xtts' | 'piper';
+  model: 'enhanced-system' | 'speecht5' | 'xtts' | 'piper';
   voiceId?: string;
   speed?: number;
   enableGPU?: boolean;
@@ -29,24 +30,82 @@ export class LocalTTSService {
   private isInitialized: boolean = false;
   private worker: Worker | null = null;
   private ttsModel: any = null;
+  private enhancedTTS: EnhancedSystemTTS;
 
-  // Voice profiles mapped to local TTS voices
+  // Enhanced System TTS voice profiles
   private static readonly LOCAL_VOICE_PROFILES: Record<string, LocalTTSConfig> = {
+    // Primary Enhanced System TTS Voices
+    'silky-smooth': {
+      model: 'enhanced-system',
+      voiceId: 'silky-smooth',
+      speed: 0.95
+    },
     'scout-professional': {
-      model: 'speecht5',
-      voiceId: 'male_authoritative',
+      model: 'enhanced-system',
+      voiceId: 'professional',
       speed: 0.9
     },
     'scout-friendly': {
-      model: 'bark',
-      voiceId: 'v2/en_speaker_6', // Friendly female voice
+      model: 'enhanced-system',
+      voiceId: 'silky-smooth',
       speed: 1.0
     },
     'scout-storyteller': {
-      model: 'bark',
-      voiceId: 'v2/en_speaker_9', // Expressive storytelling voice
+      model: 'enhanced-system',
+      voiceId: 'storyteller',
       speed: 0.95
     },
+    'scout-quick': {
+      model: 'enhanced-system',
+      voiceId: 'professional',
+      speed: 1.1
+    },
+    
+    // Persona-Specific Enhanced Voices
+    'michael-crow': {
+      model: 'enhanced-system',
+      voiceId: 'michael-crow',
+      speed: 0.85
+    },
+    'elizabeth-reilley': {
+      model: 'enhanced-system',
+      voiceId: 'elizabeth-reilley',
+      speed: 0.95
+    },
+    'zohair-developer': {
+      model: 'enhanced-system',
+      voiceId: 'zohair-developer',
+      speed: 0.9
+    },
+    'jennifer-tutor': {
+      model: 'enhanced-system',
+      voiceId: 'jennifer-tutor',
+      speed: 1.05
+    },
+    
+    // Additional Enhanced System TTS Options
+    'natural-conversational': {
+      model: 'enhanced-system',
+      voiceId: 'storyteller',
+      speed: 1.0
+    },
+    'warm-narrator': {
+      model: 'enhanced-system',
+      voiceId: 'storyteller',
+      speed: 0.9
+    },
+    'technical-expert': {
+      model: 'enhanced-system',
+      voiceId: 'professional',
+      speed: 0.95
+    },
+    'energetic-presenter': {
+      model: 'enhanced-system',
+      voiceId: 'jennifer-tutor',
+      speed: 1.1
+    },
+    
+    // Fallback Options
     'llama32-efficient': {
       model: 'piper',
       voiceId: 'lessac-medium',
@@ -54,8 +113,9 @@ export class LocalTTSService {
     }
   };
 
-  constructor(config: LocalTTSConfig = { model: 'bark' }) {
+  constructor(config: LocalTTSConfig = { model: 'enhanced-system' }) {
     this.config = config;
+    this.enhancedTTS = new EnhancedSystemTTS();
   }
 
   /**
@@ -67,10 +127,14 @@ export class LocalTTSService {
     try {
       console.log(`🎵 Initializing Local TTS with ${this.config.model}...`);
       
+      // Always initialize Enhanced System TTS (now primary)
+      await this.enhancedTTS.initialize();
+      console.log('✅ Enhanced System TTS initialized');
+      
       // Initialize based on selected model
       switch (this.config.model) {
-        case 'bark':
-          await this.initializeBark();
+        case 'enhanced-system':
+          // Already initialized above
           break;
         case 'speecht5':
           await this.initializeSpeechT5();
@@ -109,8 +173,8 @@ export class LocalTTSService {
 
     try {
       switch (profile.model) {
-        case 'bark':
-          return await this.generateWithBark(text, profile);
+        case 'enhanced-system':
+          return await this.generateWithEnhancedSystem(text, profile);
         case 'speecht5':
           return await this.generateWithSpeechT5(text, profile);
         case 'xtts':
@@ -122,7 +186,9 @@ export class LocalTTSService {
       }
     } catch (error) {
       console.error(`❌ TTS generation failed with ${profile.model}:`, error);
-      throw error;
+      // Fallback to Enhanced System TTS
+      console.log('🔄 Falling back to Enhanced System TTS...');
+      return await this.generateWithEnhancedSystem(text, { model: 'enhanced-system', voiceId: 'silky-smooth' });
     }
   }
 
@@ -184,33 +250,52 @@ export class LocalTTSService {
   }
 
   /**
-   * Initialize Bark TTS model
+   * Generate speech using Enhanced System TTS
    */
-  private async initializeBark(): Promise<void> {
-    console.log('🐕 Loading Bark TTS model...');
+  private async generateWithEnhancedSystem(text: string, config: LocalTTSConfig): Promise<LocalTTSResponse> {
+    const startTime = Date.now();
     
     try {
-      // Dynamic import of transformers.js
-      const { pipeline, env } = await import('@huggingface/transformers');
+      console.log(`🎵 Enhanced System TTS: Generating speech for "${text.substring(0, 100)}..."`);
       
-      // Configure transformers.js for browser use
-      env.allowRemoteModels = true;
-      env.allowLocalModels = true;
-      
-      // Initialize Bark TTS pipeline
-      console.log('🐕 Downloading Bark model (this may take a few minutes on first run)...');
-      this.ttsModel = await pipeline('text-to-speech', 'Xenova/bark-small', {
-        progress_callback: (progress: any) => {
-          if (progress.status === 'downloading') {
-            console.log(`🐕 Downloading ${progress.name}: ${Math.round(progress.progress || 0)}%`);
-          }
+      const result = await this.enhancedTTS.generateSpeech({
+        text,
+        profile: config.voiceId || 'silky-smooth',
+        audioEffects: true,
+        naturalPauses: true,
+        emotionalModulation: true
+      });
+
+      const duration = Date.now() - startTime;
+      console.log(`✅ Enhanced System TTS generated speech in ${duration}ms`);
+
+      return {
+        audioBlob: result.audioBlob,
+        audioUrl: result.audioUrl,
+        metadata: {
+          model: 'enhanced-system',
+          voiceId: config.voiceId || 'silky-smooth',
+          duration: result.duration || duration / 1000,
+          sampleRate: 22050
         }
-      } as any);
-      
-      console.log('🐕 Bark TTS ready!');
+      };
     } catch (error) {
-      console.error('❌ Failed to initialize Bark TTS:', error);
-      throw error;
+      console.error('❌ Enhanced System TTS generation failed:', error);
+      
+      // Create mock audio as final fallback
+      console.log('🔄 Creating mock audio fallback...');
+      const mockAudio = this.generateMockAudio(text, 'enhanced-system');
+      
+      return {
+        audioBlob: mockAudio.blob,
+        audioUrl: mockAudio.url,
+        metadata: {
+          model: 'enhanced-system-mock',
+          voiceId: config.voiceId || 'mock',
+          duration: Math.max(1, text.length * 0.05),
+          sampleRate: 22050
+        }
+      };
     }
   }
 
@@ -239,61 +324,6 @@ export class LocalTTSService {
     console.log('🎺 Loading Piper model...');
     // Implementation would load the Piper model
     console.log('🎺 Piper ready');
-  }
-
-  /**
-   * Generate speech with Bark
-   */
-  private async generateWithBark(text: string, config: LocalTTSConfig): Promise<LocalTTSResponse> {
-    console.log(`🐕 Bark generating: "${text.substring(0, 50)}..."`);
-    
-    try {
-      if (!this.ttsModel) {
-        throw new Error('Bark model not initialized');
-      }
-
-      // Generate speech with Bark
-      const result = await this.ttsModel(text, {
-        speaker_id: config.voiceId || 'v2/en_speaker_6'
-      });
-
-      // Convert the result to audio blob
-      const audioData = result.audio;
-      const sampleRate = result.sampling_rate || 24000;
-      
-      // Create WAV file from audio data
-      const audioBlob = this.createWAVBlob(audioData, sampleRate);
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      console.log(`✅ Bark generated ${audioData.length} samples at ${sampleRate}Hz`);
-
-      return {
-        audioBlob,
-        audioUrl,
-        metadata: {
-          model: 'bark',
-          voiceId: config.voiceId || 'default',
-          duration: audioData.length / sampleRate,
-          sampleRate
-        }
-      };
-
-    } catch (error) {
-      console.warn('🐕 Bark generation failed, using fallback:', error);
-      
-      // Fallback to mock audio if Bark fails
-      const mockAudio = this.generateMockAudio(text, 'bark');
-      return {
-        audioBlob: mockAudio.blob,
-        audioUrl: mockAudio.url,
-        metadata: {
-          model: 'bark-fallback',
-          voiceId: config.voiceId || 'default',
-          duration: text.length * 0.1,
-          sampleRate: 24000
-        }
-      };
-    }
   }
 
   /**
@@ -360,6 +390,17 @@ export class LocalTTSService {
    * Create WAV blob from audio data
    */
   private createWAVBlob(audioData: Float32Array, sampleRate: number): Blob {
+    // Validate input data
+    if (!audioData || audioData.length === 0) {
+      console.error('❌ Empty or invalid audio data provided to createWAVBlob');
+      throw new Error('Cannot create WAV blob from empty audio data');
+    }
+    
+    if (!sampleRate || sampleRate <= 0) {
+      console.warn('⚠️ Invalid sample rate, defaulting to 24000Hz');
+      sampleRate = 24000;
+    }
+    
     const length = audioData.length;
     const buffer = new ArrayBuffer(44 + length * 2);
     const view = new DataView(buffer);
@@ -388,32 +429,151 @@ export class LocalTTSService {
     // Convert float audio data to 16-bit PCM
     const int16Array = new Int16Array(buffer, 44);
     for (let i = 0; i < length; i++) {
-      int16Array[i] = Math.max(-32768, Math.min(32767, audioData[i] * 32768));
+      const sample = audioData[i];
+      if (isNaN(sample)) {
+        console.warn(`⚠️ NaN detected in audio data at index ${i}, replacing with 0`);
+        int16Array[i] = 0;
+      } else {
+        int16Array[i] = Math.max(-32768, Math.min(32767, sample * 32768));
+      }
     }
     
-    return new Blob([buffer], { type: 'audio/wav' });
+    const blob = new Blob([buffer], { type: 'audio/wav' });
+    
+    // Validate created blob
+    if (blob.size === 0) {
+      console.error('❌ Created WAV blob has zero size');
+      throw new Error('Generated WAV blob is empty');
+    }
+    
+    console.log(`✅ Created WAV blob: ${blob.size} bytes, ${length} samples, ${sampleRate}Hz`);
+    return blob;
   }
 
   /**
-   * Generate mock audio for development (replace with actual model output)
+   * Generate mock audio for development with voice-specific characteristics
    */
   private generateMockAudio(text: string, model: string): { blob: Blob; url: string } {
-    // Create a simple sine wave as placeholder
     const duration = Math.max(text.length * 0.08, 1); // At least 1 second
     const sampleRate = 22050;
     const samples = Math.floor(duration * sampleRate);
     
-    const audioBuffer = new ArrayBuffer(samples * 2);
-    const audioData = new Int16Array(audioBuffer);
+    // Create proper WAV file structure
+    const bufferLength = 44 + samples * 2; // WAV header + data
+    const buffer = new ArrayBuffer(bufferLength);
+    const view = new DataView(buffer);
     
-    // Generate a simple tone (placeholder for actual speech)
-    for (let i = 0; i < samples; i++) {
-      const frequency = 440 + (model.length * 50); // Different tone per model
-      audioData[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 0.3 * 32767;
+    // WAV header
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+    
+    // RIFF header
+    writeString(0, 'RIFF');
+    view.setUint32(4, bufferLength - 8, true);
+    writeString(8, 'WAVE');
+    
+    // fmt chunk
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // chunk size
+    view.setUint16(20, 1, true); // PCM format
+    view.setUint16(22, 1, true); // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+    
+    // data chunk
+    writeString(36, 'data');
+    view.setUint32(40, samples * 2, true);
+    
+    // Generate audio data
+    const audioData = new Int16Array(buffer, 44, samples);
+    
+    // Voice-specific characteristics
+    let frequency = 440; // Base frequency
+    let amplitude = 0.3;
+    let modulation = 1.0;
+    
+    // Enhanced persona-specific voice characteristics with more distinction
+    if (model.includes('michael-crow') || model.includes('v2/en_speaker_0')) {
+      frequency = 280; // Much lower, authoritative president voice
+      amplitude = 0.4;
+      modulation = 0.75; // Slower, measured presidential delivery
+    } else if (model.includes('elizabeth-reilley') || model.includes('v2/en_speaker_5')) {
+      frequency = 520; // Higher, clear visionary voice
+      amplitude = 0.35;
+      modulation = 1.15; // Confident forward-thinking pace
+    } else if (model.includes('zohair-developer') || model.includes('v2/en_speaker_4')) {
+      frequency = 360; // Mid-range, thoughtful
+      amplitude = 0.25; // Quieter, introverted genius
+      modulation = 0.85; // Careful, measured developer pace
+    } else if (model.includes('jennifer-tutor') || model.includes('v2/en_speaker_7')) {
+      frequency = 580; // Much higher, excited tutor
+      amplitude = 0.45; // Louder, enthusiastic
+      modulation = 1.3; // Fast, energetic teaching style
+    } else if (model.includes('silky-smooth') || model.includes('v2/en_speaker_1')) {
+      frequency = 380; // Warm, smooth default
+      amplitude = 0.3;
+      modulation = 0.9; // Slightly slower for smoothness
+    } else if (model.includes('professional') || model.includes('v2/en_speaker_3')) {
+      frequency = 340; // Professional business tone
+      amplitude = 0.35;
+      modulation = 1.0; // Standard professional pace
+    } else if (model.includes('storyteller') || model.includes('v2/en_speaker_9')) {
+      frequency = 450; // Rich storytelling voice
+      amplitude = 0.4;
+      modulation = 0.8; // Slower, expressive storytelling
+    } else if (model.includes('v2/en_speaker_6')) {
+      frequency = 500; // Friendly, approachable
+      amplitude = 0.35;
+      modulation = 1.05; // Upbeat friendly pace
+    } else if (model.includes('v2/en_speaker_2')) {
+      frequency = 420; // Quick, efficient
+      amplitude = 0.3;
+      modulation = 1.2; // Faster, efficient delivery
+    } else if (model.includes('v2/en_speaker_8')) {
+      frequency = 400; // Natural conversational
+      amplitude = 0.32;
+      modulation = 1.0; // Natural conversation pace
+    } else {
+      // Default variation based on model name
+      frequency = 440 + (model.length * 15);
     }
     
-    const blob = new Blob([audioBuffer], { type: 'audio/wav' });
+    // Generate audio with voice characteristics
+    for (let i = 0; i < samples; i++) {
+      const time = i / sampleRate;
+      const wave = Math.sin(2 * Math.PI * frequency * time * modulation);
+      
+      // Add subtle vibrato for more natural sound
+      const vibrato = 1 + 0.03 * Math.sin(2 * Math.PI * 4 * time);
+      let sample = wave * vibrato * amplitude;
+      
+      // Fade in/out for smoother playback
+      if (i < sampleRate * 0.1) {
+        sample *= i / (sampleRate * 0.1);
+      } else if (i > samples - sampleRate * 0.1) {
+        sample *= (samples - i) / (sampleRate * 0.1);
+      }
+      
+      audioData[i] = Math.max(-32767, Math.min(32767, sample * 32767));
+    }
+    
+    // Create blob with proper MIME type
+    const blob = new Blob([buffer], { type: 'audio/wav' });
+    
+    // Verify blob is valid before creating URL
+    if (blob.size === 0) {
+      console.error('❌ Generated audio blob is empty');
+      throw new Error('Generated audio blob is empty');
+    }
+    
     const url = URL.createObjectURL(blob);
+    
+    console.log(`🎵 Generated mock audio for ${model} (f=${frequency}Hz, a=${amplitude}, mod=${modulation}, size=${blob.size} bytes)`);
     
     return { blob, url };
   }
@@ -460,6 +620,23 @@ export class LocalTTSService {
   }
 
   /**
+   * Test voice generation for diagnostics
+   */
+  async testVoice(voiceProfile: string): Promise<LocalTTSResponse> {
+    const testText = `Testing ${voiceProfile} voice. This is how I sound.`;
+    console.log(`🧪 Testing voice profile: ${voiceProfile}`);
+    
+    try {
+      const result = await this.generateSpeech(testText, voiceProfile);
+      console.log(`✅ Voice test completed for ${voiceProfile}`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Voice test failed for ${voiceProfile}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get available local voice profiles
    */
   static getLocalVoiceProfiles(): string[] {
@@ -470,7 +647,7 @@ export class LocalTTSService {
    * Check if a model is available locally
    */
   static isModelAvailable(model: string): boolean {
-    return ['bark', 'speecht5', 'xtts', 'piper'].includes(model);
+    return ['enhanced-system', 'speecht5', 'xtts', 'piper'].includes(model);
   }
 }
 
