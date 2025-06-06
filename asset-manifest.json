@@ -1,13 +1,15 @@
 {
   "files": {
-    "main.css": "/rate-limiter/static/css/main.6a259798.css",
-    "main.js": "/rate-limiter/static/js/main.91a18e59.js",
-    "index.html": "/rate-limiter/index.html",
-    "main.6a259798.css.map": "/rate-limiter/static/css/main.6a259798.css.map",
-    "main.91a18e59.js.map": "/rate-limiter/static/js/main.91a18e59.js.map"
+    "main.css": "/beta-land/static/css/main.4367ed09.css",
+    "main.js": "/beta-land/static/js/main.94bc37fd.js",
+    "static/js/862.48b640d5.chunk.js": "/beta-land/static/js/862.48b640d5.chunk.js",
+    "index.html": "/beta-land/index.html",
+    "main.4367ed09.css.map": "/beta-land/static/css/main.4367ed09.css.map",
+    "main.94bc37fd.js.map": "/beta-land/static/js/main.94bc37fd.js.map",
+    "862.48b640d5.chunk.js.map": "/beta-land/static/js/862.48b640d5.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.6a259798.css",
-    "static/js/main.91a18e59.js"
+    "static/css/main.4367ed09.css",
+    "static/js/main.94bc37fd.js"
   ]
 }
