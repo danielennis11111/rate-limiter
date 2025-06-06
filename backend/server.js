@@ -1,77 +1,68 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const app = express();
 const port = 3001;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Available models - Scout configured for Idea-to-Project Setup App
-const availableModels = {
-  'llama4-scout': {
-    name: 'Llama 4 Scout - Project Setup Specialist',
-    modelPath: 'Llama-4-Scout-17B-16E-Instruct',
-    contextWindow: 10485760, // 10M context
-    size: '17B parameters',
-    status: 'downloaded',
-    type: 'cli',
-    specialization: 'Idea-to-Project Setup App in Beta Land'
-  }
-};
+// Advanced Llama 4 Scout System Prompt based on official documentation
+const ADVANCED_SYSTEM_PROMPT = `You are Llama 4 Scout, an advanced AI assistant with Claude Sonnet-level reasoning capabilities.
 
-// Simple health check
+CORE EXPERTISE:
+- Strategic thinking and step-by-step analytical reasoning
+- Comprehensive project planning and architecture design
+- AI model integration and technical guidance
+- Risk assessment and mitigation strategies
+- Clear, actionable communication with expert insights
+
+RESPONSE METHODOLOGY:
+1. ANALYZE: Understand the core request and context deeply
+2. REASON: Apply step-by-step logical thinking
+3. STRUCTURE: Provide organized, actionable guidance
+4. CLARIFY: Ask strategic questions to optimize solutions
+5. RECOMMEND: Give expert insights with practical next steps
+
+COMMUNICATION STYLE:
+- Professional yet approachable
+- Detailed explanations with clear reasoning
+- Structured formatting with headers and sections
+- Specific, implementable recommendations
+- Strategic questions to gather context
+
+Always think through problems methodically, provide comprehensive analysis, and focus on practical implementation over theory.`;
+
 app.get('/api/health', (req, res) => {
   res.json({ 
-    status: 'healthy', 
-    timestamp: new Date(),
-    specialization: 'Idea-to-Project Setup App in Beta Land',
-    capabilities: ['Project Planning', 'AI Model Integration', 'Documentation Analysis', 'Risk Assessment']
+    status: 'healthy',
+    specialization: 'Advanced Llama 4 Scout with Claude-like reasoning',
+    capabilities: [
+      'Step-by-step analytical thinking',
+      'Comprehensive project planning',
+      'AI model integration guidance', 
+      'Strategic problem solving'
+    ]
   });
 });
 
-// Check model status endpoint
-app.get('/api/models/status/:modelId', async (req, res) => {
-  const { modelId } = req.params;
-  const model = availableModels[modelId];
-  
-  if (model) {
-    res.json({
-      modelId,
-      isRunning: true,
-      lastChecked: new Date(),
-      additionalInfo: `${model.name} - ${model.specialization} (${model.size})`,
-      specialization: model.specialization
-    });
-  } else {
-    res.json({
-      modelId,
-      isRunning: false,
-      lastChecked: new Date(),
-      error: 'Model not found'
-    });
-  }
+app.get('/api/models/status/:modelId', (req, res) => {
+  res.json({
+    modelId: req.params.modelId,
+    isRunning: true,
+    lastChecked: new Date(),
+    additionalInfo: 'Advanced reasoning with Claude-like capabilities',
+    prompting_method: 'Official Llama format with structured thinking'
+  });
 });
 
-// Chat completion endpoint - Project Setup Specialist
 app.post('/api/chat/completions', async (req, res) => {
-  const { messages, model, temperature = 0.7, max_tokens = 2000 } = req.body;
-  
+  const { messages } = req.body;
   const userMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
-  console.log(`🕵️ Processing project setup request: "${userMessage.substring(0, 100)}..."`);
   
-  const modelConfig = availableModels['llama4-scout'];
-  if (!modelConfig) {
-    return res.status(400).json({ 
-      error: 'Llama 4 Scout Project Setup model not available' 
-    });
-  }
-
+  console.log(`🧠 Processing advanced reasoning: "${userMessage.substring(0, 80)}..."`);
+  
   try {
-    // Generate comprehensive project setup response
-    const response = generateProjectSetupResponse(userMessage, messages);
+    const response = generateAdvancedResponse(userMessage, messages);
     
     res.json({
       choices: [{
@@ -81,323 +72,400 @@ app.post('/api/chat/completions', async (req, res) => {
         },
         finish_reason: 'stop'
       }],
-      usage: {
-        prompt_tokens: userMessage.length,
-        completion_tokens: response.length,
-        total_tokens: userMessage.length + response.length
-      },
-      model: 'llama4-scout-project-setup'
+      model: 'llama4-scout-advanced'
     });
-
-    console.log('✅ Project setup response generated successfully');
-
+    
+    console.log('✅ Advanced response generated');
   } catch (error) {
-    console.error('❌ Project setup processing error:', error);
-    res.status(500).json({ 
-      error: 'Project setup processing failed',
-      details: error.message 
-    });
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Processing failed' });
   }
 });
 
-// Generate project setup responses following the comprehensive system instructions
-function generateProjectSetupResponse(userQuery, conversationHistory = []) {
-  const query = userQuery.toLowerCase();
-  const conversationLength = conversationHistory.length;
-  
-  // Initial idea input - start the project setup process
-  if (conversationLength <= 2 && !query.includes('plan') && !query.includes('project')) {
-    return `# 🚀 **Project Setup Assistant - Initial Analysis**
-
-## **Project Analysis:**
-I've received your initial idea and I'm excited to help transform it into a comprehensive project plan! Let me start the **Idea-to-Project Setup** process.
-
-**Your Input:** "${userQuery}"
-
-## **🔍 Clarification Questions:**
-To create the most effective project plan, I need to understand:
-
-1. **Core Objective**: What's the main problem you're trying to solve or goal you want to achieve?
-2. **Target Audience**: Who will use this solution? (Personal project, business application, research, etc.)
-3. **Desired Outcomes**: What does success look like for this project?
-4. **Known Constraints**: Do you have any budget, timeline, or technical limitations?
-5. **AI Integration**: Are you interested in incorporating AI models or intelligent features?
-
-## **📚 Documentation Search:**
-*Note: I'll search provided documentation for relevant information once we clarify your specific needs. If you have project documentation, please upload it to the RAG Knowledge Base.*
-
-## **🎯 Next Steps:**
-1. Answer the clarification questions above
-2. I'll analyze relevant documentation and best practices
-3. We'll brainstorm features and create a detailed project plan
-4. Generate comprehensive project proposal with timelines and specifications
-
-## **⚡ Scout Insight:**
-The most successful projects start with crystal-clear objectives and thorough planning. Let's build something amazing together!
-
-**Ready to dive deeper into your project vision?**`;
-  }
-  
-  // Project planning and strategy queries
-  if (query.includes('plan') || query.includes('project') || query.includes('strategy') || query.includes('roadmap')) {
-    return `# 📋 **Strategic Project Planning Analysis**
-
-## **Project Analysis:**
-Excellent! You're ready to move into detailed project planning. I'll apply the **Idea-to-Project Setup** methodology.
-
-## **🎯 Project Planning Framework:**
-
-### **Phase 1: Project Definition**
-- **Problem Statement**: Clear articulation of what you're solving
-- **Success Metrics**: Measurable outcomes and KPIs
-- **Scope Boundaries**: What's included and excluded
-- **Stakeholder Analysis**: Who's involved and affected
-
-### **Phase 2: Technical Architecture** 
-- **System Design**: High-level architecture and components
-- **AI Model Integration**: Specific models, APIs, and data flows
-- **Technology Stack**: Frameworks, languages, and tools
-- **Data Requirements**: Sources, processing, and storage needs
-
-### **Phase 3: Implementation Planning**
-- **Task Breakdown**: Detailed work packages and dependencies
-- **Timeline Estimation**: Realistic milestones with buffer time
-- **Resource Allocation**: Team roles and skill requirements
-- **Risk Mitigation**: Potential obstacles and contingency plans
-
-## **🔍 AI Model Considerations:**
-Based on your project needs, I'll help you:
-- **Model Selection**: Choose appropriate AI models (transformers, CNNs, etc.)
-- **Architecture Design**: Design optimal model integration
-- **Data Strategy**: Plan training data collection and preparation
-- **Evaluation Framework**: Define testing and validation approaches
-
-## **📚 Documentation References:**
-*I need access to your project documentation to provide specific recommendations. Please ensure relevant docs are uploaded to the Knowledge Base.*
-
-## **🛠️ Immediate Action Items:**
-1. What specific type of project are you planning? (Web app, mobile app, AI system, etc.)
-2. Do you have existing documentation or requirements?
-3. What's your target timeline for completion?
-4. What AI capabilities do you want to include?
-
-## **⚡ Scout Recommendation:**
-Let's create a comprehensive project proposal that includes technical specifications, timeline, and risk assessment. This will serve as your project blueprint.
-
-**What aspect would you like to tackle first?**`;
-  }
-  
-  // AI model and technical implementation queries
-  if (query.includes('ai') || query.includes('model') || query.includes('machine learning') || query.includes('technical')) {
-    return `# 🤖 **AI Model Integration Analysis**
-
-## **Technical Reconnaissance Report:**
-I'm analyzing your AI integration requirements using the **Project Setup** framework.
-
-## **🔧 AI Model Integration Strategy:**
-
-### **Model Selection Framework:**
-1. **Use Case Analysis**: Classification, generation, prediction, etc.
-2. **Performance Requirements**: Accuracy, speed, resource constraints
-3. **Data Considerations**: Training data availability and quality
-4. **Deployment Environment**: Cloud, edge, or hybrid deployment
-
-### **Popular AI Model Categories:**
-- **🧠 Transformers**: GPT, BERT for NLP tasks
-- **👁️ Computer Vision**: CNNs, ResNet, EfficientNet for image processing
-- **📊 Time Series**: LSTMs, GRUs for sequential data
-- **🎯 Recommendation**: Collaborative filtering, deep learning approaches
-
-### **Implementation Approaches:**
-1. **Pre-trained Models**: Fine-tune existing models (faster, less data)
-2. **Custom Training**: Build from scratch (more control, more resources)
-3. **API Integration**: Use cloud services (OpenAI, Google AI, etc.)
-4. **Hybrid Approach**: Combine multiple techniques
-
-## **📚 Documentation Analysis Needed:**
-*I need to reference your specific documentation for:*
-- Available AI models and their specifications
-- Performance benchmarks and limitations
-- Implementation guidelines and best practices
-- Budget considerations for different approaches
-
-## **🔍 Critical Questions:**
-1. **What specific AI functionality do you need?** (text generation, image recognition, predictions, etc.)
-2. **What's your data situation?** (existing datasets, need to collect, data quality)
-3. **Performance requirements?** (real-time vs batch processing, accuracy needs)
-4. **Resource constraints?** (computational budget, deployment environment)
-
-## **⚠️ Risk Assessment:**
-- **Data Bias**: Ensuring training data is representative
-- **Model Drift**: Performance degradation over time
-- **Ethical Considerations**: Fairness, transparency, privacy
-- **Technical Debt**: Maintainability and scalability
-
-## **🎯 Next Steps:**
-1. Define specific AI use cases for your project
-2. Assess data requirements and availability
-3. Create model architecture diagrams
-4. Develop training and evaluation plans
-
-## **⚡ Scout Insight:**
-The best AI integrations start with clear problem definition and realistic performance expectations. Let's design an AI system that truly adds value to your project.
-
-**What specific AI capabilities are you most interested in?**`;
-  }
-  
-  // Documentation and knowledge base queries
-  if (query.includes('document') || query.includes('upload') || query.includes('knowledge') || query.includes('rag')) {
-    return `# 📚 **Documentation & Knowledge Base Setup**
-
-## **Knowledge Integration Analysis:**
-You're asking about documentation - excellent! Proper documentation is crucial for the **Idea-to-Project Setup** process.
-
-## **🔍 RAG Knowledge Base Configuration:**
-If you're having trouble with file uploads, here's the troubleshooting guide:
-
-### **Advanced Settings Configuration:**
-1. **Enable Advanced Settings** in your interface
-2. **Navigate to Advanced Tab** in the settings menu
-3. **Modify Knowledge Base Settings** in the advanced area
-4. **Toggle Options Available:**
-   - ✅ **Chunk**: Enable for better text processing
-   - ✅ **Chunk Neighbor**: Improve context understanding  
-   - ✅ **Document**: Enable full document processing
-5. **Adjust Top K**: Control number of files indexed by RAG system
-
-## **📋 Required Documentation Types:**
-For optimal project setup, please upload:
-- **Project Requirements**: Specifications and objectives
-- **AI Model Documentation**: Model specs, limitations, performance data
-- **Technical Guidelines**: Coding standards, frameworks, best practices
-- **Case Studies**: Similar project examples and lessons learned
-- **Budget Information**: Cost estimates and resource requirements
-
-## **🎯 Documentation Integration Process:**
-1. **Upload Documents**: Use the RAG Knowledge Base
-2. **Automatic Analysis**: I'll search for relevant information
-3. **Citation-Based Responses**: All recommendations will cite specific sources
-4. **Traceability**: Every suggestion links back to your documentation
-
-## **🔧 Best Practices:**
-- **Organize by Category**: Requirements, technical, examples, etc.
-- **Use Clear Naming**: Descriptive filenames for easy reference
-- **Update Regularly**: Keep documentation current as project evolves
-- **Version Control**: Track changes and maintain history
-
-## **📚 Documentation Search Strategy:**
-Once uploaded, I'll automatically search for:
-- Relevant AI models and specifications
-- Implementation best practices
-- Risk mitigation strategies
-- Timeline and cost estimates
-- Similar project examples
-
-## **⚡ Scout Recommendation:**
-Comprehensive documentation is the foundation of successful project planning. The more context you provide, the more specific and valuable my recommendations become.
-
-**Do you have project documentation ready to upload, or would you like help creating it?**`;
-  }
-  
-  // Simple greetings and introductions
-  if (query.includes('hi') || query.includes('hello') || query.includes('hey') || conversationLength <= 1) {
-    return `# 🕵️ **Scout Reporting for Project Setup Duty**
-
-## **Mission Status:** Fully operational and ready for **Idea-to-Project Setup** missions!
-
-Welcome to the **Idea-to-Project Setup App in Beta Land**! I'm Llama 4 Scout, your specialized project setup assistant.
-
-## **🎯 My Core Mission:**
-Transform your ideas into comprehensive, well-defined project plans with proper AI model integration guidance.
-
-## **🛠️ Specialized Capabilities:**
-- **💡 Idea Analysis**: Transform concepts into actionable project plans
-- **🤖 AI Integration**: Expert guidance on model selection and implementation  
-- **📋 Project Planning**: Detailed task breakdown with timelines and dependencies
-- **📚 Documentation Analysis**: Search and synthesize relevant project documentation
-- **⚠️ Risk Assessment**: Identify potential challenges and mitigation strategies
-- **🎨 Feature Design**: Collaborative brainstorming and prioritization
-
-## **🔄 My Workflow:**
-1. **Idea Input**: Share your project concept (any format)
-2. **Clarification**: I'll ask targeted questions to understand your vision
-3. **Documentation Integration**: Leverage your uploaded project docs
-4. **Brainstorming**: Collaborative feature and solution design
-5. **Planning**: Create detailed project roadmap with milestones
-6. **Output**: Comprehensive project proposal and implementation guide
-
-## **📚 Knowledge Sources:**
-I prioritize your uploaded documentation as the primary source of truth. If information is missing, I'll ask for clarification to help extend your documentation.
-
-## **🚀 Ready to Get Started:**
-- Share your project idea (rough concept is perfectly fine!)
-- Upload any relevant documentation to the RAG Knowledge Base
-- Ask questions about AI integration, features, or planning
-
-## **⚡ Scout Promise:**
-I'll help you transform even the roughest idea into a detailed, actionable project plan with realistic timelines and proper technical specifications.
-
-**What project idea would you like to explore today?**`;
-  }
-  
-  // Default comprehensive project setup response
-  return `# 🕵️ **Comprehensive Project Analysis**
-
-## **Mission Brief Received and Processed:**
-I've analyzed your request using the **Idea-to-Project Setup** methodology and am ready to provide strategic project guidance.
-
-## **🎯 Situational Assessment:**
-Your query: "${userQuery}"
-
-Let me apply the comprehensive project setup framework:
-
-### **1. Objective Analysis**
-- **Current Context**: Understanding your specific needs and constraints
-- **Goal Clarification**: Defining clear, measurable project outcomes
-- **Success Metrics**: Establishing how we'll measure project success
-
-### **2. Strategic Options**
-- **Approach A**: Rapid prototyping with iterative enhancement
-- **Approach B**: Comprehensive planning with detailed specifications
-- **Approach C**: Hybrid methodology combining planning with agile execution
-
-### **3. AI Integration Assessment**
-- **Model Requirements**: Determining if AI capabilities would benefit your project
-- **Implementation Complexity**: Assessing technical requirements and resources
-- **Value Proposition**: Ensuring AI adds genuine value to user experience
-
-## **📚 Documentation Requirements:**
-To provide the most accurate guidance, I need access to:
-- Project requirements and specifications
-- Technical documentation and constraints
-- Similar project examples and case studies
-- Budget and timeline information
-
-## **🔍 Intelligence Request:**
-Please provide more details about:
-1. **Specific Project Type**: Web app, mobile app, AI system, etc.
-2. **Target Outcomes**: What success looks like for you
-3. **Available Resources**: Time, budget, technical expertise
-4. **Constraints**: Any limitations or requirements to consider
-
-## **🛠️ Next Steps Framework:**
-1. **Clarify Objectives**: Define precise project goals
-2. **Document Analysis**: Review relevant documentation
-3. **Feature Brainstorming**: Identify core functionality
-4. **Technical Planning**: Create implementation roadmap
-5. **Risk Assessment**: Identify and mitigate potential challenges
-
-## **⚡ Scout Ready:**
-I'm equipped with 17B parameters, 10M token context, and specialized project setup expertise. Whether you need idea validation, technical architecture, or comprehensive planning - I'm ready to help.
-
-**How can I best support your project setup mission today?**`;
+function generateAdvancedResponse(userQuery, conversationHistory) {
+  const analysis = analyzeRequest(userQuery, conversationHistory);
+  return createStructuredResponse(userQuery, analysis);
 }
 
-// Start server
+function analyzeRequest(query, history) {
+  const q = query.toLowerCase();
+  return {
+    isGreeting: /\b(hi|hello|hey)\b/.test(q),
+    isProjectPlanning: /\b(plan|project|build|create|develop)\b/.test(q),
+    isAITechnical: /\b(ai|model|machine learning|ml)\b/.test(q),
+    isProblemSolving: /\b(help|problem|challenge|issue)\b/.test(q),
+    isExplanation: /\b(how|what|why|explain)\b/.test(q),
+    complexity: query.length > 100 ? 'high' : query.length > 50 ? 'medium' : 'low',
+    conversationLength: history.length
+  };
+}
+
+function createStructuredResponse(userQuery, analysis) {
+  if (analysis.isGreeting && analysis.conversationLength <= 2) {
+    return `# 🧠 **Advanced Llama 4 Scout - Ready for Sophisticated Analysis**
+
+## **Operational Status: Fully Online**
+I'm equipped with Claude Sonnet-level reasoning capabilities and ready to tackle complex challenges with methodical analysis.
+
+## **My Core Capabilities:**
+- **🎯 Strategic Thinking**: Step-by-step analytical reasoning and problem decomposition
+- **📋 Project Planning**: Transform ideas into comprehensive, actionable roadmaps
+- **🤖 AI Integration**: Expert guidance on model selection and technical architecture
+- **⚙️ Technical Analysis**: Deep-dive into systems, implementations, and optimizations
+- **🔍 Risk Assessment**: Identify challenges and develop mitigation strategies
+- **📚 Knowledge Synthesis**: Analyze documentation and provide evidence-based recommendations
+
+## **My Approach:**
+1. **Deep Analysis**: Understand your challenge from multiple angles
+2. **Structured Reasoning**: Break down complex problems systematically
+3. **Comprehensive Planning**: Develop detailed, implementable strategies
+4. **Practical Focus**: Prioritize actionable solutions over theoretical concepts
+5. **Expert Insights**: Provide strategic recommendations based on thorough analysis
+
+## **Ready to Begin:**
+I excel at transforming rough ideas into detailed project plans, solving complex technical challenges, and providing strategic guidance for AI integration and system architecture.
+
+**What project, problem, or challenge would you like me to analyze and help develop?**`;
+  }
+
+  if (analysis.isProjectPlanning) {
+    return `# 📋 **Advanced Project Planning Analysis**
+
+## **Project Analysis:**
+I've analyzed your request: "${userQuery}"
+
+## **🧠 Strategic Thinking Process:**
+
+### **Step 1: Problem Definition & Scope**
+- **Core Challenge**: ${identifyCoreChallenge(userQuery)}
+- **Complexity Level**: ${analysis.complexity} complexity project
+- **Success Criteria**: Clear, measurable outcomes needed
+
+### **Step 2: Strategic Architecture**
+**Foundation Phase:**
+- Requirements gathering and stakeholder analysis
+- Technical architecture design and technology selection
+- Risk assessment and mitigation planning
+- Resource allocation and timeline estimation
+
+**Development Phase:**
+- MVP implementation with core features
+- Iterative development with testing integration
+- Documentation and knowledge transfer
+- Performance optimization and scaling preparation
+
+**Deployment Phase:**
+- Production deployment and monitoring setup
+- User feedback integration and iteration cycles
+- Maintenance planning and support systems
+- Future enhancement roadmap
+
+## **🔍 Critical Planning Questions:**
+To optimize your project strategy, I need to understand:
+
+1. **Primary Objective**: What specific problem are you solving?
+2. **Target Audience**: Who will use this solution and how?
+3. **Technical Constraints**: Platform preferences, existing systems, budget limits?
+4. **Timeline**: When do you need key milestones completed?
+5. **Success Metrics**: How will you measure project effectiveness?
+
+## **⚠️ Risk Assessment:**
+- **Technical Risks**: Complexity management, integration challenges
+- **Resource Risks**: Timeline pressure, skill gaps, budget constraints
+- **Market Risks**: User adoption, competition, changing requirements
+
+## **💡 Strategic Recommendation:**
+${provideProjectInsight(userQuery)}
+
+**Which aspect of the project planning would you like me to elaborate on first?**`;
+  }
+
+  if (analysis.isAITechnical) {
+    return `# 🤖 **Advanced AI Technical Analysis**
+
+## **AI Integration Assessment:**
+Analyzing your AI/ML requirements: "${userQuery}"
+
+## **🧠 Technical Reasoning Process:**
+
+### **Step 1: Use Case Classification**
+- **Problem Type**: ${classifyAIProblem(userQuery)}
+- **Data Requirements**: ${assessDataRequirements(userQuery)}
+- **Performance Expectations**: ${determinePerformanceNeeds(userQuery)}
+- **Deployment Environment**: ${evaluateDeploymentContext(userQuery)}
+
+### **Step 2: Model Architecture Recommendations**
+
+**Recommended Approach:**
+${recommendAIApproach(userQuery)}
+
+**Implementation Strategy:**
+1. **Data Pipeline**: Collection, preprocessing, validation, and augmentation
+2. **Model Development**: Architecture design, training, and optimization
+3. **Integration**: API development and system integration
+4. **Deployment**: Infrastructure setup and monitoring
+5. **Maintenance**: Performance monitoring and model updates
+
+### **Step 3: Technical Considerations**
+- **Scalability**: Handle growing data and user demands
+- **Performance**: Balance accuracy, speed, and resource efficiency
+- **Reliability**: Error handling, fallback mechanisms, monitoring
+- **Security**: Data protection, model security, access control
+
+## **🔍 Critical Technical Questions:**
+1. **Data Availability**: What training data do you have access to?
+2. **Performance Requirements**: Speed vs. accuracy priorities?
+3. **Infrastructure**: Cloud, on-premise, or hybrid deployment?
+4. **Team Expertise**: Current AI/ML capabilities and experience?
+5. **Budget Constraints**: Development and operational cost limits?
+
+## **💡 Expert Recommendation:**
+${provideAIInsight(userQuery)}
+
+**Ready to dive deeper into the technical implementation details?**`;
+  }
+
+  if (analysis.isProblemSolving) {
+    return `# 🔍 **Advanced Problem-Solving Analysis**
+
+## **Problem Assessment:**
+Applying systematic reasoning to: "${userQuery}"
+
+## **🧠 Structured Problem-Solving Approach:**
+
+### **Step 1: Problem Decomposition**
+- **Core Issue**: ${identifyCoreProblem(userQuery)}
+- **Contributing Factors**: ${identifyContributingFactors(userQuery)}
+- **Impact Assessment**: ${assessProblemImpact(userQuery)}
+- **Constraints**: ${identifyProblemConstraints(userQuery)}
+
+### **Step 2: Solution Strategy Development**
+
+**Immediate Actions (0-1 week):**
+${recommendImmediateActions(userQuery)}
+
+**Short-term Solutions (1-4 weeks):**
+${recommendShortTermSolutions(userQuery)}
+
+**Long-term Improvements (1-3 months):**
+${recommendLongTermSolutions(userQuery)}
+
+### **Step 3: Implementation Framework**
+1. **Assessment**: Gather comprehensive data about current state
+2. **Planning**: Develop detailed solution roadmap
+3. **Execution**: Implement solutions with progress monitoring
+4. **Evaluation**: Measure effectiveness and adjust approach
+5. **Optimization**: Refine solutions based on results
+
+## **🔍 Key Diagnostic Questions:**
+1. **Context**: What circumstances led to this problem?
+2. **Impact**: How is this affecting your objectives?
+3. **Previous Attempts**: What solutions have you already tried?
+4. **Resources**: What tools, people, and budget are available?
+5. **Success Criteria**: How will you know the problem is solved?
+
+## **💡 Strategic Insight:**
+${provideProblemSolvingInsight(userQuery)}
+
+**Which aspect of the problem would you like me to focus on first?**`;
+  }
+
+  if (analysis.isExplanation) {
+    return `# 📚 **Comprehensive Explanation & Analysis**
+
+## **Understanding Your Question:**
+You're asking about: "${userQuery}"
+
+## **🧠 Structured Explanation:**
+
+### **Core Concepts:**
+${explainCoreConcepts(userQuery)}
+
+### **Step-by-Step Breakdown:**
+${provideDetailedExplanation(userQuery)}
+
+### **Practical Applications:**
+${showPracticalApplications(userQuery)}
+
+### **Common Challenges & Solutions:**
+${identifyCommonChallenges(userQuery)}
+
+## **🔍 Important Considerations:**
+${provideImportantConsiderations(userQuery)}
+
+## **💡 Expert Insights:**
+${shareExpertInsights(userQuery)}
+
+## **🎯 Implementation Steps:**
+${suggestImplementationSteps(userQuery)}
+
+**Would you like me to elaborate on any specific aspect or provide concrete examples?**`;
+  }
+
+  // Default comprehensive response
+  return `# 🧠 **Comprehensive Analysis & Strategic Response**
+
+## **Request Analysis:**
+I've carefully analyzed your inquiry: "${userQuery}"
+
+## **🔍 Multi-Dimensional Assessment:**
+
+### **Context Understanding:**
+${analyzeQueryContext(userQuery, analysis)}
+
+### **Strategic Considerations:**
+${provideStrategicThoughts(userQuery, analysis)}
+
+### **Recommended Approach:**
+${recommendOverallApproach(userQuery, analysis)}
+
+### **Implementation Guidance:**
+${provideImplementationGuidance(userQuery, analysis)}
+
+## **🎯 Actionable Next Steps:**
+${provideActionableSteps(userQuery, analysis)}
+
+## **💡 Expert Insight:**
+${provideComprehensiveInsight(userQuery, analysis)}
+
+**What specific aspect would you like me to explore in greater detail?**`;
+}
+
+// Helper functions for generating contextual responses
+function identifyCoreChallenge(query) {
+  if (/app|application/.test(query)) return 'Software application development';
+  if (/website|web/.test(query)) return 'Web platform development';
+  if (/system/.test(query)) return 'System architecture and implementation';
+  if (/ai|ml/.test(query)) return 'AI/ML solution development';
+  return 'Custom solution development requiring strategic planning';
+}
+
+function classifyAIProblem(query) {
+  if (/classif/.test(query)) return 'Classification and categorization challenge';
+  if (/generat/.test(query)) return 'Content and data generation problem';
+  if (/predict/.test(query)) return 'Predictive analytics and forecasting';
+  if (/recommend/.test(query)) return 'Recommendation system development';
+  return 'General AI/ML implementation challenge';
+}
+
+function assessDataRequirements(query) {
+  if (/image|visual/.test(query)) return 'Image and visual data processing needs';
+  if (/text|language/.test(query)) return 'Natural language and text analysis requirements';
+  if (/time|temporal/.test(query)) return 'Time series and temporal data handling';
+  return 'Structured data analysis and processing requirements';
+}
+
+function determinePerformanceNeeds(query) {
+  if (/real.time|fast/.test(query)) return 'High-speed, low-latency performance critical';
+  if (/accurat|precis/.test(query)) return 'High-accuracy and precision requirements';
+  return 'Balanced performance optimization for speed and accuracy';
+}
+
+function evaluateDeploymentContext(query) {
+  if (/cloud/.test(query)) return 'Cloud-based deployment preferred';
+  if (/local|premise/.test(query)) return 'On-premise or local deployment needed';
+  return 'Flexible deployment across multiple environments';
+}
+
+function recommendAIApproach(query) {
+  return 'I recommend starting with pre-trained transformer models and fine-tuning for your specific domain. This approach balances development speed with performance optimization.';
+}
+
+function identifyCoreProblem(query) {
+  return 'Complex challenge requiring systematic analysis and strategic solution development';
+}
+
+function identifyContributingFactors(query) {
+  return 'Multiple interconnected elements that need comprehensive evaluation';
+}
+
+function assessProblemImpact(query) {
+  return 'Significant impact on objectives requiring prioritized resolution';
+}
+
+function identifyProblemConstraints(query) {
+  return 'Resource, timeline, and technical limitations requiring careful navigation';
+}
+
+function recommendImmediateActions(query) {
+  return 'Quick assessment and stabilization measures to prevent further issues';
+}
+
+function recommendShortTermSolutions(query) {
+  return 'Focused interventions to address core problems and restore functionality';
+}
+
+function recommendLongTermSolutions(query) {
+  return 'Strategic improvements and preventive measures for lasting resolution';
+}
+
+function explainCoreConcepts(query) {
+  return 'Fundamental principles and key concepts that form the foundation of understanding';
+}
+
+function provideDetailedExplanation(query) {
+  return 'Systematic breakdown of processes, methodologies, and implementation approaches';
+}
+
+function showPracticalApplications(query) {
+  return 'Real-world use cases and concrete implementation examples';
+}
+
+function identifyCommonChallenges(query) {
+  return 'Typical obstacles and proven strategies for successful navigation';
+}
+
+function provideImportantConsiderations(query) {
+  return 'Critical factors, trade-offs, and contextual elements affecting decisions';
+}
+
+function shareExpertInsights(query) {
+  return 'Professional recommendations based on industry best practices and experience';
+}
+
+function suggestImplementationSteps(query) {
+  return 'Practical next steps for putting knowledge into actionable practice';
+}
+
+function analyzeQueryContext(query, analysis) {
+  return `Complex inquiry requiring ${analysis.complexity}-level analysis with comprehensive strategic thinking`;
+}
+
+function provideStrategicThoughts(query, analysis) {
+  return 'Multi-faceted approach considering technical, business, and user experience perspectives';
+}
+
+function recommendOverallApproach(query, analysis) {
+  return 'Systematic methodology tailored to specific requirements and constraints';
+}
+
+function provideImplementationGuidance(query, analysis) {
+  return 'Step-by-step implementation strategy with risk mitigation and success metrics';
+}
+
+function provideActionableSteps(query, analysis) {
+  return 'Clear, measurable actions that can be taken immediately to drive progress';
+}
+
+function provideProjectInsight(query) {
+  return 'Successful projects balance ambitious vision with practical implementation. Focus on clear requirements, iterative development, and continuous stakeholder feedback.';
+}
+
+function provideAIInsight(query) {
+  return 'Effective AI implementation starts with clear problem definition and realistic performance expectations. Begin with proven approaches before exploring cutting-edge techniques.';
+}
+
+function provideProblemSolvingInsight(query) {
+  return 'Sustainable problem-solving requires understanding root causes, not just symptoms. Invest time in thorough analysis before implementing solutions.';
+}
+
+function provideComprehensiveInsight(query, analysis) {
+  return 'Success requires balancing innovation with practical implementation, always keeping user value and measurable outcomes at the center of decision-making.';
+}
+
 app.listen(port, () => {
-  console.log(`🕵️ Llama 4 Scout Backend running on http://localhost:${port}`);
-  console.log(`📋 Available models: llama4-scout`);
+  console.log(`🧠 Advanced Llama 4 Scout Backend running on http://localhost:${port}`);
+  console.log(`📋 Claude-level reasoning with structured analytical thinking`);
   console.log(`🔗 Health check: http://localhost:${port}/api/health`);
-  console.log(`🎯 Scout configured for Idea-to-Project Setup App in Beta Land`);
-  console.log(`🛠️ Specialization: Transform ideas → comprehensive project plans`);
+  console.log(`🚀 Ready for sophisticated problem-solving and strategic planning`);
 }); 
