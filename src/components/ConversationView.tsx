@@ -10,6 +10,7 @@ import { estimateTokenCount, calculateTokenUsage, DocumentContext } from '../uti
 import { EnhancedRAGProcessor } from '../utils/enhancedRAG';
 import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
 import { AvatarTTSService, AvatarSpeechRequest } from '../services/AvatarTTSService';
+import LocalTTSService from '../services/LocalTTSService';
 import TokenUsagePreview from './TokenUsagePreview';
 import NotificationSystem, { Notification } from './NotificationSystem';
 import ModelSwitcher from './ModelSwitcher';
@@ -97,25 +98,23 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   
   // Enhanced Avatar TTS service for Virtual Avatar Builder
   const avatarTTSService = useRef<AvatarTTSService | null>(null);
+  const localTTSService = useRef<LocalTTSService | null>(null);
   
   // Voice recognition setup
   const recognition = useRef<SpeechRecognition | null>(null);
   const synthesis = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
-    // Initialize Avatar TTS service for Virtual Avatar Builder
+    // Initialize Local TTS service for Virtual Avatar Builder
     if (template.id === 'virtual-avatar-builder') {
-      // Get OpenAI API key from environment or configuration
-      const openaiApiKey = process.env.REACT_APP_OPENAI_API_KEY || 
-                          localStorage.getItem('openai_api_key') || 
-                          sessionStorage.getItem('openai_api_key');
+      // Initialize local TTS service (no API key needed!)
+      localTTSService.current = new LocalTTSService({ model: 'bark' });
+      console.log('🎭 Local TTS Service initialized for Virtual Avatar Builder');
       
-      if (openaiApiKey) {
-        avatarTTSService.current = new AvatarTTSService(openaiApiKey, 'http://localhost:3001');
-        console.log('🎭 Avatar TTS Service initialized for Virtual Avatar Builder');
-      } else {
-        console.warn('⚠️ No OpenAI API key found for Avatar TTS');
-      }
+      // Initialize local TTS in background
+      localTTSService.current.initialize().catch(error => {
+        console.warn('⚠️ Local TTS initialization failed, will use browser TTS:', error);
+      });
     }
 
     // Initialize voice services
@@ -230,11 +229,11 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const speakText = async (text: string, isAIResponse: boolean = false) => {
     if (!text.trim() || !isAIResponse) return;
 
-    // Use Avatar TTS for Virtual Avatar Builder
-    if (template.id === 'virtual-avatar-builder' && avatarTTSService.current) {
+    // Use Local TTS for Virtual Avatar Builder
+    if (template.id === 'virtual-avatar-builder' && localTTSService.current) {
       try {
         setVoiceStatus(prev => ({ ...prev, isSpeaking: true, error: null }));
-        console.log(`🎭 ${template.persona}: Starting Avatar TTS...`);
+        console.log(`🎭 ${template.persona}: Starting Local Avatar TTS...`);
 
         const speechRequest: AvatarSpeechRequest = {
           text: text,
@@ -243,9 +242,9 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           avatarProfile: template.features?.voicePersona || 'scout-friendly'
         };
 
-        const response = await avatarTTSService.current.generateAvatarSpeech(speechRequest);
+        const response = await localTTSService.current.generateAvatarSpeech(speechRequest);
         
-        console.log(`🎭 Avatar TTS: Using ${response.avatarProfile.name} (${response.avatarProfile.ttsVoice})`);
+        console.log(`🎭 Local Avatar TTS: Using ${response.avatarProfile.name} (${response.avatarProfile.ttsVoice})`);
         console.log(`💭 Emotional tags: ${response.emotionalTags.join(', ')}`);
 
         // Create audio element and play
