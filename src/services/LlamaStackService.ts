@@ -1,7 +1,4 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+// LlamaStackService - Browser-compatible service for Llama CLI models
 
 interface LlamaStackResponse {
   content: string;
@@ -36,11 +33,10 @@ export class LlamaStackService {
    */
   private async checkAvailableModels(): Promise<void> {
     try {
-      // Check for Llama 4 Scout (we know it's downloaded)
-      this.availableModels.set('Llama-4-Scout-17B-16E-Instruct', true);
-      
-      // Check for Llama 4 Maverick (empty folder)
-      this.availableModels.set('Llama-4-Maverick-17B-128E-Instruct', false);
+      // Known downloaded models (based on user confirmation)
+      this.availableModels.set('Llama-4-Scout-17B-16E-Instruct', true);   // 2.7GB - downloaded
+      this.availableModels.set('Llama3.2-3B-Instruct', true);             // 799MB - downloaded
+      this.availableModels.set('Llama-4-Maverick-17B-128E-Instruct', false); // Empty folder
       
       console.log('🦙 Llama Stack models available:', Array.from(this.availableModels.entries()));
     } catch (error) {
@@ -185,6 +181,13 @@ I can see you have document context available. With my massive context window, I
           contextWindow: 10240000, // 10M+ tokens
           size: '2.7GB',
           description: 'Advanced reasoning model with massive context window'
+        };
+      case 'Llama3.2-3B-Instruct':
+        return {
+          name: 'Llama 3.2 3B Instruct',
+          contextWindow: 128000, // 128K tokens
+          size: '799MB',
+          description: 'Efficient instruction-following model for general tasks'
         };
       case 'Llama-4-Maverick-17B-128E-Instruct':
         return {

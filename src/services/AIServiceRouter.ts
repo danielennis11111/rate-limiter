@@ -137,10 +137,10 @@ export class AIServiceRouter {
   }
 
   /**
-   * Check if model should use Llama Stack CLI (for Llama 4 models)
+   * Check if model should use Llama Stack CLI (for downloaded Llama models)
    */
   private isLlamaStackModel(modelId: string): boolean {
-    return modelId.startsWith('Llama-4-') && this.llamaStackService.isModelAvailable(modelId);
+    return this.llamaStackService.isModelAvailable(modelId);
   }
 
   /**

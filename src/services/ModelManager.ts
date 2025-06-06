@@ -166,9 +166,18 @@ export class ModelManager {
         isMultimodal: false
       },
       {
+        id: 'Llama3.2-3B-Instruct',
+        name: 'Llama 3.2 3B Instruct (✅ Downloaded)',
+        description: 'Efficient instruction-following model - locally available',
+        status: 'offline',
+        capabilities: ['conversation', 'instructions', 'efficiency', 'general-tasks'],
+        maxTokens: 128000, // 128K tokens
+        isMultimodal: false
+      },
+      {
         id: 'Llama-4-Maverick-17B-128E-Instruct',
-        name: 'Llama 4 Maverick 17B (🔄 Downloading)',
-        description: 'Faster processing model with 1M context - optimized for real-time avatar responses',
+        name: 'Llama 4 Maverick 17B (❌ Pending)',
+        description: 'Faster processing model with 1M context - download pending (842GB required)',
         status: 'offline',
         capabilities: ['fast-processing', 'conversation', 'planning', 'efficiency', 'real-time'],
         maxTokens: 1048576, // 1M tokens
@@ -458,18 +467,23 @@ export class ModelManager {
    */
   private async checkLocalLlamaModel(modelId: string): Promise<boolean> {
     try {
-      // For now, we'll use a different approach - check via API call
-      // This is a placeholder for browser compatibility
       console.log(`🔍 Checking for local Llama model: ${modelId}`);
       
-      // We'll implement this by checking our backend API or making assumptions
-      // based on known downloaded models for now
-      if (modelId === 'Llama-4-Scout-17B-16E-Instruct' || 
-          modelId === 'Llama-4-Maverick-17B-128E-Instruct') {
-        return true; // Assume these are available since user confirmed they're downloaded
+      // Check for known downloaded models based on user confirmation
+      const knownLocalModels = [
+        'Llama-4-Scout-17B-16E-Instruct', // 2.7GB - confirmed downloaded
+        'Llama3.2-3B-Instruct' // 799MB - confirmed downloaded
+      ];
+      
+      const isAvailable = knownLocalModels.includes(modelId);
+      
+      if (isAvailable) {
+        console.log(`✅ Local Llama model confirmed: ${modelId}`);
+      } else {
+        console.log(`❌ Local Llama model not found: ${modelId}`);
       }
       
-      return false;
+      return isAvailable;
     } catch (error) {
       console.error('Error checking local Llama model:', error);
       return false;

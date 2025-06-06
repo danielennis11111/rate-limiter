@@ -430,7 +430,7 @@ What would you like to explore with your local AI assistant?`,
       contextLength: 128000,
       voicePersona: 'alloy',
       modelSwitching: true,
-      availableModels: ['llama3.1:8b', 'llama3.2:3b', 'gpt-4o', 'gemini-2.0-flash']
+      availableModels: ['Llama-4-Scout-17B-16E-Instruct', 'Llama3.2-3B-Instruct', 'gpt-4o', 'gemini-2.0-flash']
     }
   },
 
