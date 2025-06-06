@@ -16,8 +16,29 @@ export interface ConversationTemplate {
   systemPrompt: string;
   icon: string;
   color: string;
-  features: string[];
-  demoQuestions: string[];
+  capabilities: string[];
+  suggestedQuestions: string[];
+  parameters: {
+    temperature: number;
+    maxTokens: number;
+    topP: number;
+    frequencyPenalty: number;
+    presencePenalty: number;
+  };
+  features: {
+    ragEnabled: boolean;
+    contextOptimization: boolean;
+    rateLimiting: boolean;
+    multimodal: boolean;
+    toolCalling: boolean;
+    streamingEnabled: boolean;
+    contextLength: number;
+    supportedImageFormats?: string[];
+    maxImageSize?: string;
+    imageTokenRatio?: string;
+    edgeOptimized?: boolean;
+    privacyFocused?: boolean;
+  };
 }
 
 export interface Conversation {

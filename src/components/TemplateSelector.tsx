@@ -81,7 +81,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                   {/* Features */}
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1">
-                      {template.features.slice(0, 3).map((feature, index) => (
+                      {template.capabilities.slice(0, 3).map((feature: string, index: number) => (
                         <span
                           key={index}
                           className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full"

@@ -362,7 +362,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             <div className="mt-4">
               <p className="text-sm text-gray-600 mb-2">Try asking:</p>
               <div className="flex flex-wrap gap-2">
-                {template.demoQuestions.slice(0, 3).map((question, index) => (
+                {template.suggestedQuestions.slice(0, 3).map((question: string, index: number) => (
                   <button
                     key={index}
                     onClick={() => setInputMessage(question)}
