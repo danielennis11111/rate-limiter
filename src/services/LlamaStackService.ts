@@ -52,7 +52,7 @@ export class LlamaStackService {
   }
 
   /**
-   * Send message to Llama CLI model
+   * Send message to Llama CLI model via backend service
    */
   async sendMessage(
     messages: LlamaStackMessage[],
@@ -71,57 +71,68 @@ export class LlamaStackService {
     }
 
     try {
-      // For now, since we can't easily interface with Llama CLI from browser,
-      // we'll provide a mock response that shows the model is ready
-      // In a real implementation, this would need a backend service
+      // Prepare messages with system prompt and RAG context if provided
+      let processedMessages = [...messages];
       
-      const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
-      
-      let mockResponse = `## 🦙 Llama 4 Scout Response
-
-I'm **Llama 4 Scout**, your advanced AI assistant with a **10M+ token context window**! 
-
-**Your query**: "${lastUserMessage}"
-
-✨ **Enhanced Capabilities:**
-- **Massive 10M+ token context** - I can handle entire documents and long conversations
-- **Advanced reasoning** - Complex problem-solving and analysis
-- **Real-time availability** - Downloaded locally (2.7GB) and ready to use
-
-🔧 **Technical Note**: I'm currently running through a **mock interface** because our web app needs a backend service to communicate with Llama CLI models. 
-
-**To fully activate me, you would need:**
-1. **Backend API server** to interface with \`llama\` CLI
-2. **WebSocket connection** for real-time streaming
-3. **Model serving infrastructure** via Llama Stack
-
-**Current Status**: 
-- ✅ **Model Downloaded**: Llama-4-Scout-17B-16E-Instruct (2.7GB)
-- ✅ **Context Window**: 10,240K tokens
-- 🔄 **Waiting for**: Backend integration
-
-Would you like me to help you set up the backend service to fully integrate Llama 4 Scout?`;
-
-      if (options.ragContext) {
-        mockResponse += `\n\n## 📚 Document Context Detected
-
-I can see you have document context available. With my massive context window, I could analyze entire documents and provide detailed insights based on your uploaded content.
-
-**Context Preview**: ${options.ragContext.substring(0, 200)}...`;
+      if (options.systemPrompt || options.ragContext) {
+        let systemContent = options.systemPrompt || 'You are a helpful AI assistant.';
+        
+        if (options.ragContext) {
+          systemContent += `\n\n## Document Context\n\nThe user has uploaded the following documents for context:\n\n${options.ragContext}\n\nUse this context to provide more relevant and informed responses when applicable.`;
+        }
+        
+        // Add or replace system message
+        const hasSystemMessage = processedMessages.some(msg => msg.role === 'system');
+        if (hasSystemMessage) {
+          processedMessages = processedMessages.map(msg => 
+            msg.role === 'system' ? { ...msg, content: systemContent } : msg
+          );
+        } else {
+          processedMessages = [{ role: 'system', content: systemContent }, ...processedMessages];
+        }
       }
 
-      return {
-        content: mockResponse,
-        usage: {
-          prompt_tokens: messages.reduce((acc, msg) => acc + msg.content.length / 4, 0),
-          completion_tokens: mockResponse.length / 4,
-          total_tokens: (messages.reduce((acc, msg) => acc + msg.content.length / 4, 0)) + (mockResponse.length / 4)
+      console.log(`🦙 Sending request to backend for ${modelId}...`);
+
+      // Call the backend service
+      const response = await fetch('http://localhost:3001/api/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        model: modelId
+        body: JSON.stringify({
+          messages: processedMessages,
+          model: modelId,
+          temperature: options.temperature || 0.7,
+          max_tokens: options.maxTokens || 1000
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Backend API error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      
+      return {
+        content: data.choices[0].message.content,
+        usage: {
+          prompt_tokens: data.usage.prompt_tokens,
+          completion_tokens: data.usage.completion_tokens,
+          total_tokens: data.usage.total_tokens
+        },
+        model: data.model
       };
 
     } catch (error) {
       console.error('Llama Stack API request failed:', error);
+      
+      // If backend is not running, provide helpful error message
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Backend service not running. Please start the Llama backend server on port 3001.');
+      }
+      
       throw error;
     }
   }
