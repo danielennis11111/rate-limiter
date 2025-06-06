@@ -498,7 +498,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
               )}
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Welcome to {template.persona}
+              Welcome to {template.name}
             </h3>
             <p className="text-gray-600 mb-6">{template.description}</p>
             

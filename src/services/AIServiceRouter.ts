@@ -1,5 +1,6 @@
 import { LlamaService } from '../utils/llamaService';
 import { GeminiService } from './GeminiService';
+import { OpenAIService } from './OpenAIService';
 
 interface AIMessage {
   role: 'system' | 'user' | 'assistant';
@@ -28,12 +29,14 @@ interface AIOptions {
  * 🤖 AI Service Router
  * 
  * Routes conversations to the appropriate AI service based on model ID:
+ * - OpenAI models (gpt-*, o1-*): Use OpenAI API with OPENAI_API_KEY
  * - Gemini models (gemini-*): Use Google Gemini API with GEMINI_API_KEY
  * - Llama models (llama*): Use local Ollama service
  */
 export class AIServiceRouter {
   private llamaService: LlamaService;
   private geminiService: GeminiService | null = null;
+  private openaiService: OpenAIService | null = null;
 
   constructor() {
     this.llamaService = new LlamaService();
@@ -48,6 +51,17 @@ export class AIServiceRouter {
     } else {
       console.warn('⚠️ REACT_APP_GEMINI_API_KEY not found - Gemini models will fallback to Llama');
     }
+
+    // Initialize OpenAI service if API key is available
+    const openaiApiKey = process.env.REACT_APP_OPENAI_API_KEY;
+    if (openaiApiKey) {
+      this.openaiService = new OpenAIService({
+        apiKey: openaiApiKey
+      });
+      console.log('🔑 OpenAI API key found - OpenAI models enabled');
+    } else {
+      console.warn('⚠️ REACT_APP_OPENAI_API_KEY not found - OpenAI models will fallback to Llama');
+    }
   }
 
   /**
@@ -58,13 +72,31 @@ export class AIServiceRouter {
     modelId: string,
     options: AIOptions = {}
   ): Promise<AIResponse> {
-    console.log(`🤖 Routing request to ${this.isGeminiModel(modelId) ? 'Gemini' : 'Llama'} for model: ${modelId}`);
+    console.log(`🤖 Routing request to ${this.getServiceName(modelId)} for model: ${modelId}`);
 
-    if (this.isGeminiModel(modelId) && this.geminiService) {
+    if (this.isOpenAIModel(modelId) && this.openaiService) {
+      return this.sendToOpenAI(messages, modelId, options);
+    } else if (this.isGeminiModel(modelId) && this.geminiService) {
       return this.sendToGemini(messages, modelId, options);
     } else {
       return this.sendToLlama(messages, modelId, options);
     }
+  }
+
+  /**
+   * Get service name for logging
+   */
+  private getServiceName(modelId: string): string {
+    if (this.isOpenAIModel(modelId)) return 'OpenAI';
+    if (this.isGeminiModel(modelId)) return 'Gemini';
+    return 'Llama';
+  }
+
+  /**
+   * Check if model should use OpenAI API
+   */
+  private isOpenAIModel(modelId: string): boolean {
+    return modelId.startsWith('gpt-') || modelId.startsWith('o1-');
   }
 
   /**
@@ -159,6 +191,52 @@ Make your responses visually appealing and easy to scan with proper formatting.`
   }
 
   /**
+   * Send request to OpenAI API
+   */
+  private async sendToOpenAI(
+    messages: AIMessage[],
+    modelId: string,
+    options: AIOptions
+  ): Promise<AIResponse> {
+    if (!this.openaiService) {
+      console.warn('🔄 OpenAI service not available, falling back to Llama');
+      return this.sendToLlama(messages, modelId, options);
+    }
+
+    try {
+      // Convert messages to OpenAI format
+      const openaiMessages = messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content
+      }));
+
+      console.log(`🧠 Sending request to OpenAI model: ${modelId}`);
+      
+      const response = await this.openaiService.chat(openaiMessages, {
+        model: modelId,
+        systemPrompt: options.systemPrompt,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        ragContext: options.ragContext
+      });
+
+      return {
+        content: response.content,
+        usage: {
+          prompt_tokens: response.usage?.promptTokens || 0,
+          completion_tokens: response.usage?.completionTokens || 0,
+          total_tokens: response.usage?.totalTokens || 0
+        },
+        model: modelId
+      };
+
+    } catch (error) {
+      console.error('🚨 OpenAI API error, falling back to Llama:', error);
+      return this.sendToLlama(messages, modelId, options);
+    }
+  }
+
+  /**
    * Send request to Llama service
    */
   private async sendToLlama(
@@ -177,13 +255,16 @@ Make your responses visually appealing and easy to scan with proper formatting.`
   async checkAvailability(): Promise<{
     llama: boolean;
     gemini: boolean;
+    openai: boolean;
   }> {
     const llamaAvailable = await this.llamaService.isServerRunning();
     const geminiAvailable = this.geminiService ? await this.geminiService.checkAvailability() : false;
+    const openaiAvailable = this.openaiService ? await this.openaiService.testConnection() : false;
 
     return {
       llama: llamaAvailable,
-      gemini: geminiAvailable
+      gemini: geminiAvailable,
+      openai: openaiAvailable
     };
   }
 }
