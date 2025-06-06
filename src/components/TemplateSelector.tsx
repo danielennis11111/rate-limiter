@@ -30,8 +30,8 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Choose Your AI Assistant</h2>
-              <p className="text-blue-100 mt-1">Select a specialized AI template to start your conversation</p>
+              <h2 className="text-2xl font-bold">🚀 Choose Your AI Adventure</h2>
+              <p className="text-blue-100 mt-1">Welcome to Beta Land @ ASU - Select your AI companion for exploration</p>
             </div>
             <button
               onClick={onClose}
@@ -121,7 +121,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
         <div className="bg-gray-50 px-6 py-4 border-t">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              💡 Tip: Make sure Ollama is running to use these templates
+              ✨ Explore advanced AI features: Voice interaction, visual analysis, and extended memory
             </div>
             <button
               onClick={onClose}

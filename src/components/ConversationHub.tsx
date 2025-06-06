@@ -155,19 +155,39 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
             />
           ) : (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-6xl mb-4">🤖</div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  Welcome to AI Conversation Hub
+              <div className="text-center max-w-2xl mx-auto p-8">
+                <div className="text-6xl mb-6">🚀</div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  Welcome to Beta Land @ ASU
                 </h2>
-                <p className="text-gray-600 mb-6">
-                  Select a conversation or create a new one to get started
+                <p className="text-lg text-gray-600 mb-8">
+                  Your AI Adventure Playground awaits! Explore cutting-edge AI capabilities with voice interaction, multimodal processing, and advanced reasoning. Choose your adventure below.
                 </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <h3 className="font-semibold text-blue-900 mb-2">🎤 Voice Interaction</h3>
+                    <p className="text-sm text-blue-700">Talk to AI naturally with speech-to-text and voice responses</p>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
+                    <h3 className="font-semibold text-purple-900 mb-2">👁️ Visual Analysis</h3>
+                    <p className="text-sm text-purple-700">Upload images and documents for AI-powered analysis</p>
+                  </div>
+                  <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                    <h3 className="font-semibold text-green-900 mb-2">📚 Extended Memory</h3>
+                    <p className="text-sm text-green-700">Process entire documents with massive context windows</p>
+                  </div>
+                  <div className="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+                    <h3 className="font-semibold text-orange-900 mb-2">🔬 Research Tools</h3>
+                    <p className="text-sm text-orange-700">Advanced reasoning for academic and research projects</p>
+                  </div>
+                </div>
+                
                 <button
                   onClick={() => setShowTemplateSelector(true)}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 text-lg font-semibold shadow-lg"
                 >
-                  Start New Conversation
+                  🌟 Begin Your AI Adventure
                 </button>
               </div>
             </div>

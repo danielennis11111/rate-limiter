@@ -1,8 +1,8 @@
 {
-  "name": "unblock-and-focus",
-  "version": "0.1.0",
+  "name": "beta-land-asu",
+  "version": "1.0.0",
   "private": true,
-  "homepage": "https://danielennis11111.github.io/rate-limiter",
+  "homepage": "https://danielennis11111.github.io/beta-land",
   "dependencies": {
     "@types/node": "^16.18.0",
     "@types/react": "^18.2.0",

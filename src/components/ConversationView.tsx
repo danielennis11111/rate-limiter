@@ -18,19 +18,15 @@ interface ConversationViewProps {
 interface PDFDocument {
   id: string;
   name: string;
-  size: number;
-  pageCount: number;
-  uploadedAt: Date;
-  tokenCount: number;
-  chunks?: any[];
+  content: string;
+  pages: number;
 }
 
-interface RateLimitInfo {
-  currentRequests: number;
-  maxRequests: number;
-  resetTime: Date;
-  isBlocked: boolean;
-  emergencyModeTriggered: boolean;
+interface VoiceStatus {
+  isListening: boolean;
+  isRecording: boolean;
+  isSpeaking: boolean;
+  error: string | null;
 }
 
 const ConversationView: React.FC<ConversationViewProps> = ({
@@ -40,355 +36,438 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   modelManager,
   onConversationUpdate
 }) => {
-  const [inputMessage, setInputMessage] = useState('');
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [llamaService] = useState(() => new LlamaService());
-  const [optimizationManager] = useState(() => ContextOptimizationManager.getInstance());
-  const [ragEnabled, setRagEnabled] = useState(false);
-  const [uploadedPDFs, setUploadedPDFs] = useState<PDFDocument[]>([]);
-  const [showPDFUpload, setShowPDFUpload] = useState(false);
-  const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo>({
-    currentRequests: 0,
-    maxRequests: 15,
-    resetTime: new Date(Date.now() + 60000),
-    isBlocked: false,
-    emergencyModeTriggered: false
+  const [pdfs, setPdfs] = useState<PDFDocument[]>([]);
+  const [isProcessingPDF, setIsProcessingPDF] = useState(false);
+  const [ragContext, setRagContext] = useState('');
+  const [requestCount, setRequestCount] = useState(0);
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [rateLimitReset, setRateLimitReset] = useState<Date | null>(null);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({
+    isListening: false,
+    isRecording: false,
+    isSpeaking: false,
+    error: null
   });
-  const [showAdvancedFeatures, setShowAdvancedFeatures] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const llamaService = new LlamaService();
+  const pdfProcessor = new PDFProcessor();
+  const contextManager = new ContextOptimizationManager();
+  
+  // Voice recognition setup
+  const recognition = useRef<SpeechRecognition | null>(null);
+  const synthesis = useRef<SpeechSynthesis | null>(null);
+
+  useEffect(() => {
+    // Initialize voice services
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition.current = new SpeechRecognition();
+      recognition.current.continuous = false;
+      recognition.current.interimResults = false;
+      recognition.current.lang = 'en-US';
+      
+      recognition.current.onstart = () => {
+        setVoiceStatus(prev => ({ ...prev, isListening: true, isRecording: true, error: null }));
+      };
+      
+      recognition.current.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setVoiceStatus(prev => ({ ...prev, isListening: false, isRecording: false }));
+      };
+      
+      recognition.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+        setVoiceStatus(prev => ({ 
+          ...prev, 
+          isListening: false, 
+          isRecording: false, 
+          error: `Voice recognition error: ${event.error}` 
+        }));
+      };
+      
+      recognition.current.onend = () => {
+        setVoiceStatus(prev => ({ ...prev, isListening: false, isRecording: false }));
+      };
+    }
+    
+    if ('speechSynthesis' in window) {
+      synthesis.current = window.speechSynthesis;
+    }
+    
+    setIsVoiceEnabled(!!recognition.current && !!synthesis.current);
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [conversation.messages]);
 
   useEffect(() => {
-    // Auto-reset rate limit every minute
-    const interval = setInterval(() => {
-      setRateLimitInfo(prev => ({
-        ...prev,
-        currentRequests: 0,
-        isBlocked: false,
-        resetTime: new Date(Date.now() + 60000)
-      }));
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
+    // Rate limiting logic
+    const now = new Date();
+    const oneMinuteAgo = new Date(now.getTime() - 60000);
+    
+    const recentRequests = conversation.messages.filter(msg => 
+      msg.role === 'user' && msg.timestamp > oneMinuteAgo
+    ).length;
+    
+    setRequestCount(recentRequests);
+    
+    if (recentRequests >= 15) {
+      setIsRateLimited(true);
+      setRateLimitReset(new Date(now.getTime() + 60000));
+    } else {
+      setIsRateLimited(false);
+      setRateLimitReset(null);
+    }
+  }, [conversation.messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
-
-    // Check rate limit
-    if (rateLimitInfo.isBlocked || rateLimitInfo.currentRequests >= rateLimitInfo.maxRequests) {
-      alert('Rate limit exceeded. Please wait for reset.');
-      return;
+  const startVoiceRecognition = () => {
+    if (recognition.current && !voiceStatus.isListening) {
+      try {
+        recognition.current.start();
+      } catch (error) {
+        setVoiceStatus(prev => ({ 
+          ...prev, 
+          error: 'Failed to start voice recognition' 
+        }));
+      }
     }
+  };
 
-    const userMessage = inputMessage.trim();
-    setInputMessage('');
-    setIsLoading(true);
+  const stopVoiceRecognition = () => {
+    if (recognition.current && voiceStatus.isListening) {
+      recognition.current.stop();
+    }
+  };
 
-    // Update rate limit
-    setRateLimitInfo(prev => ({
-      ...prev,
-      currentRequests: prev.currentRequests + 1,
-      isBlocked: prev.currentRequests + 1 >= prev.maxRequests
-    }));
-
-    try {
-      // Add user message
-      const userMsg: Omit<Message, 'id' | 'timestamp'> = {
-        content: userMessage,
-        role: 'user'
+  const speakText = (text: string) => {
+    if (synthesis.current && text) {
+      // Cancel any ongoing speech
+      synthesis.current.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 0.8;
+      
+      // Find a female voice
+      const voices = synthesis.current.getVoices();
+      const femaleVoice = voices.find(voice => 
+        voice.name.toLowerCase().includes('female') || 
+        voice.name.toLowerCase().includes('samantha') ||
+        voice.name.toLowerCase().includes('alex')
+      );
+      
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      }
+      
+      utterance.onstart = () => {
+        setVoiceStatus(prev => ({ ...prev, isSpeaking: true }));
       };
       
-      const addedUserMsg = conversationManager.addMessage(conversation.id, userMsg);
-      onConversationUpdate();
+      utterance.onend = () => {
+        setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
+      };
+      
+      utterance.onerror = () => {
+        setVoiceStatus(prev => ({ 
+          ...prev, 
+          isSpeaking: false, 
+          error: 'Speech synthesis error' 
+        }));
+      };
+      
+      synthesis.current.speak(utterance);
+    }
+  };
 
-      // Prepare RAG context if enabled
-      let ragContext = '';
-      if (ragEnabled && uploadedPDFs.length > 0) {
-        const allChunks = uploadedPDFs.flatMap(pdf => pdf.chunks || []);
-        const relevantChunks = PDFProcessor.searchPDFChunks(allChunks, userMessage);
-        
-        if (relevantChunks.length > 0) {
-          ragContext = relevantChunks.slice(0, 3).map(chunk => 
-            `[${chunk.metadata?.section || 'Document'}]: ${chunk.content.substring(0, 300)}...`
-          ).join('\n\n');
-        }
-      }
+  const stopSpeaking = () => {
+    if (synthesis.current) {
+      synthesis.current.cancel();
+      setVoiceStatus(prev => ({ ...prev, isSpeaking: false }));
+    }
+  };
 
-      // Prepare conversation history for context
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading || isRateLimited) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date(),
+      tokens: estimateTokenCount(input.trim())
+    };
+
+    // Add user message
+    conversationManager.addMessage(conversation.id, userMessage);
+    setInput('');
+    setIsLoading(true);
+    onConversationUpdate();
+
+    try {
+      // Prepare context with recent messages
       const recentMessages = conversation.messages.slice(-10);
       const llamaMessages = recentMessages.map(msg => ({
         role: msg.role,
         content: msg.content
       }));
-
+      
       // Add current message
-      llamaMessages.push({ role: 'user', content: userMessage });
+      llamaMessages.push({ role: 'user', content: input.trim() });
 
-      // Get optimization state for emergency mode settings
-      const optimizationState = optimizationManager.getState();
-      const isEmergencyMode = optimizationState.emergencyMode.active;
-
-      // Send to Llama with template's system prompt
-      const llamaResponse = await llamaService.sendMessage(
+      // Call AI service
+      const response = await llamaService.sendMessage(
         llamaMessages,
         template.modelId,
         {
-          maxTokens: isEmergencyMode ? 200 : 500,
-          temperature: 0.7,
-          topP: 0.9,
-          ragContext: ragContext || undefined,
-          systemPrompt: template.systemPrompt
+          ragContext,
+          systemPrompt: template.systemPrompt,
+          temperature: template.parameters.temperature,
+          maxTokens: template.parameters.maxTokens,
+          topP: template.parameters.topP
         }
       );
 
-      // Add AI response
-      const aiMsg: Omit<Message, 'id' | 'timestamp'> = {
-        content: llamaResponse.content,
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        tokens: llamaResponse.usage.completion_tokens,
+        content: response.content,
+        timestamp: new Date(),
+        tokens: response.usage?.completion_tokens || 0,
         modelUsed: template.modelId
       };
 
-      conversationManager.addMessage(conversation.id, aiMsg);
+      conversationManager.addMessage(conversation.id, assistantMessage);
+      
+      // Auto-speak response if voice is enabled
+      if (isVoiceEnabled && !voiceStatus.isSpeaking) {
+        speakText(response.content);
+      }
+      
       onConversationUpdate();
-
     } catch (error) {
       console.error('Error sending message:', error);
-      
-      // Add error response
-      const errorMsg: Omit<Message, 'id' | 'timestamp'> = {
-        content: `I apologize, but I encountered an error. ${error instanceof Error ? error.message : 'Please try again.'}`,
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        modelUsed: template.modelId
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date(),
+        tokens: 20
       };
-
-      conversationManager.addMessage(conversation.id, errorMsg);
+      conversationManager.addMessage(conversation.id, errorMessage);
       onConversationUpdate();
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const handlePDFUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    setIsProcessingPDF(true);
+    
+    for (const file of Array.from(files)) {
+      if (file.type === 'application/pdf') {
+        try {
+          const processedPDF = await PDFProcessor.processPDF(file);
+          const content = processedPDF.chunks.map(chunk => chunk.content).join('\n\n');
+          const newPDF: PDFDocument = {
+            id: processedPDF.id,
+            name: processedPDF.name,
+            content: content,
+            pages: processedPDF.pageCount
+          };
+          
+          setPdfs(prev => [...prev, newPDF]);
+          setRagContext(prev => prev + '\n\n' + content);
+        } catch (error) {
+          console.error('Error processing PDF:', error);
+        }
+      }
     }
+    
+    setIsProcessingPDF(false);
   };
 
-  const handleUploadPDF = async (file: File): Promise<void> => {
-    try {
-      const processedPDF = await PDFProcessor.processPDF(file);
-      const pdfDocument: PDFDocument = {
-        id: processedPDF.id,
-        name: processedPDF.name,
-        size: processedPDF.size,
-        pageCount: processedPDF.pageCount,
-        uploadedAt: processedPDF.uploadedAt,
-        tokenCount: processedPDF.tokenCount,
-        chunks: processedPDF.chunks
-      };
-      
-      setUploadedPDFs(prev => [...prev, pdfDocument]);
-      setShowPDFUpload(false);
-    } catch (error) {
-      console.error('Failed to upload PDF:', error);
-      alert('Failed to upload PDF. Please try again.');
-    }
+  const removePDF = (id: string) => {
+    setPdfs(prev => {
+      const newPdfs = prev.filter(pdf => pdf.id !== id);
+      const newContext = newPdfs.map(pdf => pdf.content).join('\n\n');
+      setRagContext(newContext);
+      return newPdfs;
+    });
   };
 
-  const handleRemovePDF = (id: string) => {
-    setUploadedPDFs(prev => prev.filter(pdf => pdf.id !== id));
+  const handleQuestionClick = (question: string) => {
+    setInput(question);
+    
+    // Auto-speak the question if voice is enabled
+    if (isVoiceEnabled && !voiceStatus.isSpeaking) {
+      speakText(question);
+    }
   };
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const calculateTokens = () => {
-    return conversation.messages.reduce((total, msg) => 
-      total + (msg.tokens || estimateTokenCount(msg.content)), 0
-    );
-  };
-
-  const currentTokens = calculateTokens();
-  const model = modelManager.getModel(template.modelId);
-  const maxTokens = model?.maxTokens || 128000;
-  const tokenPercentage = (currentTokens / maxTokens) * 100;
-
   return (
     <div className="flex flex-col h-full">
-      {/* Enhanced Template Info Bar with Features */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-        <div className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg"
-                style={{ backgroundColor: template.color }}
-              >
-                {template.icon}
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                <p className="text-sm text-gray-600">{template.description}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              {/* Model Status */}
-              <div className="flex items-center space-x-1">
-                <div className={`w-2 h-2 rounded-full ${
-                  model?.status === 'online' ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-                <span className="text-xs text-gray-600">{model?.name}</span>
-              </div>
-
-              {/* Advanced Features Toggle */}
-              <button
-                onClick={() => setShowAdvancedFeatures(!showAdvancedFeatures)}
-                className="p-2 hover:bg-white hover:bg-opacity-60 rounded-lg transition-colors"
-                title="Advanced Features"
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                </svg>
-              </button>
+      {/* Header */}
+      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-2xl">{template.icon}</span>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{template.name}</h2>
+              <p className="text-sm text-gray-600">{template.description}</p>
             </div>
           </div>
-
-          {/* Advanced Features Panel */}
-          {showAdvancedFeatures && (
-            <div className="mt-4 bg-white bg-opacity-60 rounded-lg p-3 space-y-3">
-              {/* Token Usage */}
-              <div>
-                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                  <span>Token Usage</span>
-                  <span>{currentTokens.toLocaleString()} / {maxTokens.toLocaleString()}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all ${
-                      tokenPercentage > 80 ? 'bg-red-500' : 
-                      tokenPercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.min(tokenPercentage, 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Rate Limit */}
-              <div>
-                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                  <span>Rate Limit</span>
-                  <span>{rateLimitInfo.currentRequests} / {rateLimitInfo.maxRequests}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all ${
-                      rateLimitInfo.currentRequests >= rateLimitInfo.maxRequests ? 'bg-red-500' : 'bg-blue-500'
-                    }`}
-                    style={{ width: `${(rateLimitInfo.currentRequests / rateLimitInfo.maxRequests) * 100}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* RAG Toggle and PDF Management */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={ragEnabled}
-                      onChange={(e) => setRagEnabled(e.target.checked)}
-                      className="rounded"
-                    />
-                    <span className="text-sm text-gray-700">RAG Mode</span>
-                  </label>
-                  <span className="text-xs text-gray-500">({uploadedPDFs.length} docs)</span>
-                </div>
-                
+          
+          {/* Voice Controls */}
+          {isVoiceEnabled && (
+            <div className="flex items-center space-x-2">
+              {voiceStatus.isSpeaking && (
                 <button
-                  onClick={() => setShowPDFUpload(!showPDFUpload)}
-                  className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                  onClick={stopSpeaking}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Stop speaking"
                 >
-                  Upload PDF
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
                 </button>
-              </div>
-
-              {/* PDF Upload */}
-              {showPDFUpload && (
-                <div className="border-t pt-3">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUploadPDF(file);
-                    }}
-                    className="text-xs"
-                  />
-                  
-                  {uploadedPDFs.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {uploadedPDFs.map((pdf) => (
-                        <div key={pdf.id} className="flex items-center justify-between text-xs bg-gray-100 p-2 rounded">
-                          <span>{pdf.name} ({pdf.pageCount} pages)</span>
-                          <button
-                            onClick={() => handleRemovePDF(pdf.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               )}
+              
+              <div className="flex items-center space-x-1 text-xs text-gray-500">
+                {voiceStatus.isSpeaking && (
+                  <span className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>Speaking</span>
+                  </span>
+                )}
+                {voiceStatus.isRecording && (
+                  <span className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <span>Listening</span>
+                  </span>
+                )}
+              </div>
             </div>
           )}
+          
+          {/* Rate Limit Indicator */}
+          <div className="flex items-center space-x-2">
+            <div className="text-xs text-gray-500">
+              {requestCount}/15 requests
+            </div>
+            {isRateLimited && rateLimitReset && (
+              <div className="text-xs text-red-600">
+                Rate limited until {formatTime(rateLimitReset)}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Template Info */}
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">Model: {template.modelId}</span>
+            <span className="text-gray-600">Context: {template.features.contextLength.toLocaleString()} tokens</span>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {template.capabilities.slice(0, 4).map((capability, index) => (
+              <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                {capability}
+              </span>
+            ))}
+          </div>
+        </div>
+        
+        {voiceStatus.error && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+            {voiceStatus.error}
+          </div>
+        )}
+      </div>
 
-          {/* Demo Questions */}
-          {conversation.messages.length === 0 && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-600 mb-2">Try asking:</p>
-              <div className="flex flex-wrap gap-2">
+      {/* PDF Upload Section */}
+      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">Document Analysis</h3>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            multiple
+            onChange={handlePDFUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isProcessingPDF}
+            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isProcessingPDF ? 'Processing...' : 'Upload PDFs'}
+          </button>
+        </div>
+        
+        {pdfs.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {pdfs.map((pdf) => (
+              <div key={pdf.id} className="flex items-center justify-between p-2 bg-white rounded text-sm">
+                <span className="text-gray-700">{pdf.name} ({pdf.pages} pages)</span>
+                <button
+                  onClick={() => removePDF(pdf.id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {conversation.messages.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-4">
+              <span className="text-4xl">{template.icon}</span>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Welcome to {template.name}
+            </h3>
+            <p className="text-gray-600 mb-6">{template.description}</p>
+            
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-700">Try these questions:</h4>
+              <div className="grid gap-2 max-w-2xl mx-auto">
                 {template.suggestedQuestions.slice(0, 3).map((question: string, index: number) => (
                   <button
                     key={index}
-                    onClick={() => setInputMessage(question)}
-                    className="text-xs bg-white bg-opacity-80 text-gray-700 px-3 py-1 rounded-full hover:bg-opacity-100 transition-colors border"
+                    onClick={() => handleQuestionClick(question)}
+                    className="p-3 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
                   >
                     {question}
                   </button>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {conversation.messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
-            <div className="text-4xl mb-2">{template.icon}</div>
-            <p>Start your conversation with {template.name}</p>
-            <p className="text-sm mt-1">Ask me anything related to {template.description.toLowerCase()}</p>
-            {ragEnabled && uploadedPDFs.length > 0 && (
-              <p className="text-xs mt-2 text-blue-600">
-                🧠 RAG mode enabled with {uploadedPDFs.length} document(s)
-              </p>
-            )}
           </div>
         ) : (
           conversation.messages.map((message) => (
@@ -397,20 +476,31 @@ const ConversationView: React.FC<ConversationViewProps> = ({
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                className={`max-w-3xl px-4 py-2 rounded-lg ${
                   message.role === 'user'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                <p className="text-sm">{message.content}</p>
-                <p className={`text-xs mt-1 ${
+                <div className="whitespace-pre-wrap">{message.content}</div>
+                <div className={`text-xs mt-1 ${
                   message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
                 }`}>
                   {formatTime(message.timestamp)}
                   {message.tokens && ` • ${message.tokens} tokens`}
                   {message.modelUsed && ` • ${message.modelUsed}`}
-                </p>
+                </div>
+                
+                {message.role === 'assistant' && isVoiceEnabled && (
+                  <button
+                    onClick={() => speakText(message.content)}
+                    disabled={voiceStatus.isSpeaking}
+                    className="mt-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    title="Speak this response"
+                  >
+                    🔊 Speak
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -418,11 +508,10 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-900 max-w-xs lg:max-w-md px-4 py-2 rounded-lg">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="bg-gray-100 px-4 py-2 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-gray-600">Thinking...</span>
               </div>
             </div>
           </div>
@@ -431,34 +520,50 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="border-t bg-white p-4">
-        <div className="flex space-x-2">
-          <textarea
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={`Message ${template.name}...`}
-            className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32"
-            rows={1}
-            disabled={isLoading || rateLimitInfo.isBlocked}
+      {/* Input */}
+      <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
+        <form onSubmit={handleSubmit} className="flex space-x-2">
+          {/* Voice Input Button */}
+          {isVoiceEnabled && (
+            <button
+              type="button"
+              onClick={voiceStatus.isListening ? stopVoiceRecognition : startVoiceRecognition}
+              disabled={isLoading || isRateLimited}
+              className={`p-3 rounded-lg transition-colors ${
+                voiceStatus.isRecording
+                  ? 'bg-red-600 text-white animate-pulse'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              } disabled:opacity-50`}
+              title={voiceStatus.isListening ? 'Stop listening' : 'Start voice input'}
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+          
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={
+              isRateLimited 
+                ? 'Rate limited - please wait...' 
+                : isVoiceEnabled 
+                  ? 'Type your message or use voice input...' 
+                  : 'Type your message...'
+            }
+            disabled={isLoading || isRateLimited}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
           />
           <button
-            onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || isLoading || rateLimitInfo.isBlocked}
-            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            type="submit"
+            disabled={!input.trim() || isLoading || isRateLimited}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+            {isLoading ? 'Sending...' : 'Send'}
           </button>
-        </div>
-        
-        {rateLimitInfo.isBlocked && (
-          <p className="text-xs text-red-600 mt-1">
-            Rate limit reached. Resets at {rateLimitInfo.resetTime.toLocaleTimeString()}
-          </p>
-        )}
+        </form>
       </div>
     </div>
   );
