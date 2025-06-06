@@ -19,25 +19,33 @@ const ServiceLogo: React.FC<ServiceLogoProps> = ({
     lg: 'w-6 h-6'
   };
 
-  const getLogoPath = (service: string, variant: string): string => {
+  const getLogoContent = (service: string, variant: string): JSX.Element | null => {
+    const iconClass = `${sizeClasses[size]} ${className}`;
+    
     switch (service) {
       case 'openai':
-        return variant === 'dark' 
-          ? '/OpenAI-white-monoblossom.svg'
-          : '/OpenAI-black-monoblossom.svg';
+        return (
+          <div className={`${iconClass} bg-black ${variant === 'dark' ? 'bg-white' : 'bg-black'} rounded-full flex items-center justify-center`}>
+            <span className={`font-bold text-xs ${variant === 'dark' ? 'text-black' : 'text-white'}`}>AI</span>
+          </div>
+        );
       
       case 'meta':
-        return variant === 'dark'
-          ? '/Meta_lockup_mono_white_RGB.svg'
-          : '/Meta_lockup_positive%20primary_RGB.svg';
+        return (
+          <div className={`${iconClass} bg-blue-600 rounded-full flex items-center justify-center`}>
+            <span className="font-bold text-xs text-white">M</span>
+          </div>
+        );
       
       case 'gemini':
-        return variant === 'dark'
-          ? '/BrandLogo.org%20-%20Gemini%20Icon%20White.svg'
-          : '/BrandLogo.org%20-%20Gemini%20Icon.svg';
+        return (
+          <div className={`${iconClass} bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center`}>
+            <span className="font-bold text-xs text-white">G</span>
+          </div>
+        );
       
       default:
-        return '';
+        return null;
     }
   };
 
@@ -55,58 +63,22 @@ const ServiceLogo: React.FC<ServiceLogoProps> = ({
   };
 
   const service = getService(modelId);
-  const logoPath = getLogoPath(service, variant);
+  const logoContent = getLogoContent(service, variant);
 
   // Debug logging
-  console.log('🔧 ServiceLogo:', { modelId, service, variant, logoPath });
+  console.log('🔧 ServiceLogo:', { modelId, service, variant });
 
-  if (!logoPath || service === 'unknown') {
+  if (!logoContent || service === 'unknown') {
     // Fallback to a generic icon
     console.log('🔧 ServiceLogo: Using fallback for', modelId);
     return (
-      <div className={`${sizeClasses[size]} ${className} bg-gray-400 rounded flex items-center justify-center`}>
+      <div className={`${sizeClasses[size]} ${className} bg-gray-400 rounded-full flex items-center justify-center`}>
         <span className="text-white text-xs font-bold">AI</span>
       </div>
     );
   }
 
-  // Special handling for Meta logo to show only the icon part, not the text
-  const isMetaLogo = service === 'meta';
-  
-  if (isMetaLogo) {
-    // For Meta logos, we'll crop to show only the icon part
-    return (
-      <div className={`${sizeClasses[size]} ${className} overflow-hidden flex items-center justify-center`}>
-        <img 
-          src={logoPath}
-          alt={`${service} logo`}
-          className="h-full object-contain"
-          style={{ 
-            width: '500%', // Make it much wider so we can crop the left part
-            objectPosition: 'left center',
-            marginLeft: '0%',
-            transform: 'translateX(0%)'
-          }}
-        />
-      </div>
-    );
-  }
-  
-  return (
-    <div className={`${sizeClasses[size]} ${className} flex items-center justify-center`}>
-      <img 
-        src={logoPath}
-        alt={`${service} logo`}
-        className={`${sizeClasses[size]} object-contain`}
-        onError={(e) => {
-          console.error('🔧 ServiceLogo: Failed to load image', logoPath);
-          // Replace with fallback
-          e.currentTarget.style.display = 'none';
-          e.currentTarget.parentElement!.innerHTML = '<span class="text-white text-xs font-bold">AI</span>';
-        }}
-      />
-    </div>
-  );
+  return logoContent;
 };
 
 export default ServiceLogo; 
