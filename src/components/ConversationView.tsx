@@ -23,7 +23,7 @@ import HighlightedText from './HighlightedText';
 import RAGDiscoveryPanel from './RAGDiscoveryPanel';
 import { convertRAGResultsToCitations, filterAndRankCitations, createRAGDiscovery, parseTextWithHighlighting } from '../utils/citationParser';
 import { IncantationEngine } from '../services/IncantationEngine';
-import { contextManager } from '../utils/contextManager';
+// import { contextManager } from '../utils/contextManager'; // TODO: Implement context management
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -94,7 +94,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [ragContext, setRagContext] = useState('');
   const [ragProcessor] = useState(() => new EnhancedRAGProcessor());
   const [isRateLimited, setIsRateLimited] = useState(false);
-  const [rateLimitReset, setRateLimitReset] = useState<Date | null>(null);
+  // const [rateLimitReset, setRateLimitReset] = useState<Date | null>(null); // TODO: Implement rate limiting
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({
     isListening: false,
     isRecording: false,
@@ -304,10 +304,10 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     
     if (recentRequests >= 15) {
       setIsRateLimited(true);
-      setRateLimitReset(new Date(now.getTime() + 60000));
+      // setRateLimitReset(new Date(now.getTime() + 60000)); // TODO: Implement rate limiting
     } else {
       setIsRateLimited(false);
-      setRateLimitReset(null);
+      // setRateLimitReset(null); // TODO: Implement rate limiting
     }
   }, [conversation.messages]);
 
