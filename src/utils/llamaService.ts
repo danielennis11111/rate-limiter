@@ -54,6 +54,7 @@ export class LlamaService {
       temperature?: number;
       topP?: number;
       ragContext?: string;
+      systemPrompt?: string;
     } = {}
   ): Promise<LlamaResponse> {
     
@@ -65,14 +66,19 @@ export class LlamaService {
     }
 
     try {
-      // Prepare the request with RAG context if provided
+      // Prepare the request with system prompt and RAG context if provided
       let processedMessages = [...messages];
       
-      if (options.ragContext) {
-        // Inject RAG context into system message or create one
+      if (options.systemPrompt || options.ragContext) {
+        let systemContent = options.systemPrompt || 'You are a helpful AI assistant.';
+        
+        if (options.ragContext) {
+          systemContent += `\n\nUse the following context from the user's documents to provide relevant insights:\n\n${options.ragContext}\n\nBased on this context and your training, provide helpful, actionable advice.`;
+        }
+        
         const systemMessage = {
           role: 'system' as const,
-          content: `You are an AI assistant focused on helping users work through mental blockers and maintain focus. Use the following context from the user's documents to provide relevant insights:\n\n${options.ragContext}\n\nBased on this context and your training, provide helpful, actionable advice.`
+          content: systemContent
         };
         
         // Replace existing system message or add new one
