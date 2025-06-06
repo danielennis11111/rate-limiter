@@ -1,5 +1,6 @@
 import React from 'react';
 import { ConversationTemplate } from '../types/index';
+import ServiceLogo from './ServiceLogo';
 
 interface WelcomeExperienceProps {
   experiences: ConversationTemplate[];
@@ -88,7 +89,10 @@ const WelcomeExperience: React.FC<WelcomeExperienceProps> = ({
 
                 {/* Model & Voice Info */}
                 <div className="flex items-center justify-between text-white text-opacity-70 text-xs">
-                  <span>🧠 {experience.modelId}</span>
+                  <div className="flex items-center space-x-1">
+                    <ServiceLogo modelId={experience.modelId} variant="dark" size="sm" />
+                    <span>{experience.modelId}</span>
+                  </div>
                   <span>🎙️ {experience.features.voicePersona}</span>
                 </div>
               </div>

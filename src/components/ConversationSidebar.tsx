@@ -1,7 +1,8 @@
 import React from 'react';
-import { MessageCircle, Cpu, Zap, FlaskConical } from 'lucide-react';
+import { MessageCircle, Cpu, Zap, FlaskConical, Trash2 } from 'lucide-react';
 import ServiceLogo from './ServiceLogo';
 import { Conversation, ConversationTemplate } from '../types/index';
+import { generateChatSummary, formatLastMessageTime } from '../utils/chatSummary';
 
 interface ConversationSidebarProps {
   conversations: Conversation[];
@@ -26,28 +27,28 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 }) => {
   const getTemplateIcon = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
-    const icon = template?.icon;
     
-    // If template has a modelId, use the service logo
+    // If template has a modelId, use the service logo with white variant for better contrast
     if (template?.modelId) {
-      return <ServiceLogo modelId={template.modelId} variant="light" size="sm" />;
+      return <ServiceLogo modelId={template.modelId} variant="dark" size="sm" />;
     }
     
-    // Map icon names to components for non-model templates
+    // Fallback for templates without model IDs
+    const icon = template?.icon;
     if (typeof icon === 'string') {
       switch (icon) {
         case 'llama':
-          return <ServiceLogo modelId="llama3.1:8b" variant="light" size="sm" />;
+          return <ServiceLogo modelId="llama3.1:8b" variant="dark" size="sm" />;
         case 'rocket':
-          return <Zap className="w-4 h-4 text-red-600" />;
+          return <Zap className="w-4 h-4 text-white" />;
         case 'research':
-          return <FlaskConical className="w-4 h-4 text-blue-600" />;
+          return <FlaskConical className="w-4 h-4 text-white" />;
         default:
-          return <Cpu className="w-4 h-4" />;
+          return <Cpu className="w-4 h-4 text-white" />;
       }
     }
     
-    return icon || <Cpu className="w-4 h-4" />;
+    return icon || <Cpu className="w-4 h-4 text-white" />;
   };
 
   const getTemplateColor = (templateId: string) => {
@@ -55,18 +56,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     return template?.color || '#3B82F6';
   };
 
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor(diff / (1000 * 60));
 
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
-    return 'Just now';
-  };
 
   return (
     <div className="h-full flex flex-col">
@@ -137,8 +127,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                     {/* Conversation Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-gray-900 truncate">
-                          {conversation.title}
+                        <h3 className="text-sm font-medium text-gray-900 truncate flex-1">
+                          {generateChatSummary(conversation.messages)}
                         </h3>
                         
                         {/* Delete Button */}
@@ -147,12 +137,11 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                             e.stopPropagation();
                             onDeleteConversation(conversation.id);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 rounded-md transition-all ml-2 flex-shrink-0"
                           aria-label="Delete conversation"
+                          title="Delete conversation"
                         >
-                          <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
                         </button>
                       </div>
                       
@@ -161,14 +150,25 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                       </p>
                       
                       <p className="text-xs text-gray-400 mt-1">
-                        {formatTime(conversation.lastUpdated)}
+                        {formatLastMessageTime(conversation.lastUpdated)}
                       </p>
                       
                       {/* Last message preview */}
                       {conversation.messages.length > 0 && (
                         <p className="text-xs text-gray-600 mt-2 line-clamp-2">
-                          {conversation.messages[conversation.messages.length - 1].content.slice(0, 60)}
-                          {conversation.messages[conversation.messages.length - 1].content.length > 60 && '...'}
+                          {(() => {
+                            const lastMessage = conversation.messages[conversation.messages.length - 1];
+                            let preview = lastMessage.content
+                              .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                              .replace(/\*(.*?)\*/g, '$1')     // Remove italic
+                              .replace(/`(.*?)`/g, '$1')       // Remove code
+                              .replace(/#{1,6}\s/g, '')        // Remove headers
+                              .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links
+                              .replace(/\n+/g, ' ')            // Replace newlines
+                              .trim();
+                            
+                            return preview.length > 60 ? preview.slice(0, 60) + '...' : preview;
+                          })()}
                         </p>
                       )}
                     </div>

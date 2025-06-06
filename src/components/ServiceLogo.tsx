@@ -29,12 +29,12 @@ const ServiceLogo: React.FC<ServiceLogoProps> = ({
       case 'meta':
         return variant === 'dark'
           ? '/Meta_lockup_mono_white_RGB.svg'
-          : '/Meta_lockup_positive primary_RGB.svg';
+          : '/Meta_lockup_positive%20primary_RGB.svg';
       
       case 'gemini':
         return variant === 'dark'
-          ? '/BrandLogo.org - Gemini Icon White.svg'
-          : '/BrandLogo.org - Gemini Icon.svg';
+          ? '/BrandLogo.org%20-%20Gemini%20Icon%20White.svg'
+          : '/BrandLogo.org%20-%20Gemini%20Icon.svg';
       
       default:
         return '';
@@ -57,8 +57,12 @@ const ServiceLogo: React.FC<ServiceLogoProps> = ({
   const service = getService(modelId);
   const logoPath = getLogoPath(service, variant);
 
+  // Debug logging
+  console.log('🔧 ServiceLogo:', { modelId, service, variant, logoPath });
+
   if (!logoPath || service === 'unknown') {
     // Fallback to a generic icon
+    console.log('🔧 ServiceLogo: Using fallback for', modelId);
     return (
       <div className={`${sizeClasses[size]} ${className} bg-gray-400 rounded flex items-center justify-center`}>
         <span className="text-white text-xs font-bold">AI</span>
@@ -94,6 +98,12 @@ const ServiceLogo: React.FC<ServiceLogoProps> = ({
         src={logoPath}
         alt={`${service} logo`}
         className={`${sizeClasses[size]} object-contain`}
+        onError={(e) => {
+          console.error('🔧 ServiceLogo: Failed to load image', logoPath);
+          // Replace with fallback
+          e.currentTarget.style.display = 'none';
+          e.currentTarget.parentElement!.innerHTML = '<span class="text-white text-xs font-bold">AI</span>';
+        }}
       />
     </div>
   );

@@ -106,6 +106,73 @@ export class ModelManager {
         capabilities: ['text-generation', 'conversation', 'coding'],
         maxTokens: 128000,
         isMultimodal: false
+      },
+      
+      // 🤗 Additional Hugging Face Local Models
+      {
+        id: 'mistral:7b',
+        name: 'Mistral 7B',
+        description: 'Fast European model - efficient and capable',
+        status: 'offline',
+        capabilities: ['text-generation', 'conversation', 'multilingual'],
+        maxTokens: 32000,
+        isMultimodal: false
+      },
+      {
+        id: 'codellama:7b',
+        name: 'CodeLlama 7B',
+        description: 'Specialized coding assistant - local development',
+        status: 'offline',
+        capabilities: ['code-generation', 'debugging', 'programming'],
+        maxTokens: 100000,
+        isMultimodal: false
+      },
+      {
+        id: 'vicuna:7b',
+        name: 'Vicuna 7B',
+        description: 'Enhanced conversation model - local chat',
+        status: 'offline',
+        capabilities: ['text-generation', 'conversation', 'instruction-following'],
+        maxTokens: 32000,
+        isMultimodal: false
+      },
+      {
+        id: 'dolphin-mixtral:8x7b',
+        name: 'Dolphin Mixtral 8x7B',
+        description: 'Mixture of experts - powerful local reasoning',
+        status: 'offline',
+        capabilities: ['reasoning', 'text-generation', 'problem-solving'],
+        maxTokens: 32000,
+        isMultimodal: false
+      },
+      {
+        id: 'wizardlm:7b',
+        name: 'WizardLM 7B',
+        description: 'Instruction-tuned model - local assistance',
+        status: 'offline',
+        capabilities: ['instruction-following', 'conversation', 'problem-solving'],
+        maxTokens: 32000,
+        isMultimodal: false
+      },
+      
+      // 🦙 Llama 4 Models (Meta's Latest)
+      {
+        id: 'llama4-scout',
+        name: 'Llama 4 Scout',
+        description: 'Latest from Meta - efficient reasoning and conversation',
+        status: 'offline',
+        capabilities: ['reasoning', 'conversation', 'planning', 'efficiency'],
+        maxTokens: 128000,
+        isMultimodal: false
+      },
+      {
+        id: 'llama4',
+        name: 'Llama 4',
+        description: 'Meta\'s flagship model - advanced reasoning and capabilities',
+        status: 'offline',
+        capabilities: ['advanced-reasoning', 'conversation', 'planning', 'multimodal'],
+        maxTokens: 128000,
+        isMultimodal: true
       }
     ];
 
