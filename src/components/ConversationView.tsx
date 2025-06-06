@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Conversation, ConversationTemplate, Message } from '../types/index';
@@ -57,16 +57,9 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const aiService = new AIServiceRouter();
+  const aiService = useMemo(() => new AIServiceRouter(), []);
   
-  // Initialize OpenAI Voice Service with API key
-  const voiceService = (() => {
-    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-    if (apiKey && apiKey !== 'your_openai_api_key_here') {
-      return new OpenAIVoiceService({ apiKey });
-    }
-    return null;
-  })();
+  // Voice service removed - using browser TTS instead
   // const pdfProcessor = new PDFProcessor(); // Currently unused
   
   // Voice recognition setup
@@ -285,12 +278,9 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       let fullContent = '';
 
       
-      try {
-        let chunkCount = 0;
-        for await (const chunk of stream) {
-          chunkCount++;
-
-          fullContent += chunk;
+              try {
+          for await (const chunk of stream) {
+            fullContent += chunk;
           
           // Update the assistant message with the streaming content
           assistantMessage.content = fullContent;

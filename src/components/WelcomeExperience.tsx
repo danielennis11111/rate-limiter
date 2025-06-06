@@ -28,65 +28,68 @@ const WelcomeExperience: React.FC<WelcomeExperienceProps> = ({
           </div>
         </div>
 
-        {/* Experience Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        {/* Experience Cards - Condensed Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {experiences.map((experience) => (
             <div
               key={experience.id}
               onClick={() => onSelectExperience(experience.id)}
               className={`
-                group relative overflow-hidden rounded-2xl p-8 cursor-pointer
-                transition-all duration-300 hover:scale-105 hover:shadow-2xl
+                group relative overflow-hidden rounded-xl p-4 cursor-pointer
+                transition-all duration-200 hover:scale-102 hover:shadow-lg
                 ${experience.color} text-white
                 border border-white border-opacity-20
               `}
             >
-              {/* Background Pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0 bg-gradient-to-br from-white to-transparent"></div>
-              </div>
-
               {/* Content */}
               <div className="relative">
                 {/* Expert Photo & Info */}
-                <div className="flex items-center mb-6">
-                  <img 
-                    src={experience.icon} 
-                    alt={experience.persona}
-                    className="w-16 h-16 rounded-full border-3 border-white border-opacity-50 object-cover mr-4"
-                  />
-                  <div>
-                    <h3 className="text-2xl font-bold mb-1">{experience.name}</h3>
-                    <p className="text-white text-opacity-90">{experience.persona}</p>
+                <div className="flex items-center mb-3">
+                  {experience.icon.startsWith('http') ? (
+                    <img 
+                      src={experience.icon} 
+                      alt={experience.persona}
+                      className="w-10 h-10 rounded-full border-2 border-white border-opacity-50 object-cover mr-3"
+                    />
+                  ) : (
+                    <div className="text-2xl mr-3">{experience.icon}</div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold leading-tight">{experience.name}</h3>
+                    <p className="text-white text-opacity-80 text-sm">{experience.persona}</p>
+                  </div>
+                  {/* Hover Arrow */}
+                  <div className="transition-transform duration-200 group-hover:translate-x-1">
+                    <svg className="w-4 h-4 text-white text-opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </div>
 
                 {/* Description */}
-                <p className="text-white text-opacity-90 mb-6 leading-relaxed">
+                <p className="text-white text-opacity-90 mb-3 text-sm leading-relaxed" style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }}>
                   {experience.description}
                 </p>
 
                 {/* Key Capabilities */}
-                <div className="space-y-2 mb-6">
-                  {experience.capabilities.slice(0, 3).map((capability, index) => (
+                <div className="space-y-1 mb-3">
+                  {experience.capabilities.slice(0, 2).map((capability, index) => (
                     <div key={index} className="flex items-center text-white text-opacity-80">
-                      <div className="w-2 h-2 bg-white bg-opacity-60 rounded-full mr-3"></div>
-                      <span className="text-sm">{capability}</span>
+                      <div className="w-1.5 h-1.5 bg-white bg-opacity-60 rounded-full mr-2"></div>
+                      <span className="text-xs">{capability}</span>
                     </div>
                   ))}
                 </div>
 
                 {/* Model & Voice Info */}
-                <div className="flex items-center justify-between text-white text-opacity-70 text-sm">
+                <div className="flex items-center justify-between text-white text-opacity-70 text-xs">
                   <span>🧠 {experience.modelId}</span>
-                  <span>🎙️ {experience.features.voicePersona} voice</span>
-                </div>
-
-                {/* Hover Arrow */}
-                <div className="absolute top-8 right-8 transition-transform duration-300 group-hover:translate-x-1">
-                  <svg className="w-6 h-6 text-white text-opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <span>🎙️ {experience.features.voicePersona}</span>
                 </div>
               </div>
             </div>

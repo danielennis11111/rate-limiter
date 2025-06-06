@@ -161,7 +161,7 @@ What would you like to explore together?`,
       contextLength: 128000,
       voicePersona: 'onyx',
       modelSwitching: true,
-      availableModels: ['gpt-4o', 'gpt-4-turbo', 'gemini-2.0-flash', 'llama3.1:8b']
+      availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama3.1:8b']
     }
   },
 
@@ -229,7 +229,7 @@ What would you like to plan or design together?`,
       contextLength: 1000000,
       voicePersona: 'nova',
       modelSwitching: true,
-      availableModels: ['gemini-2.0-flash', 'gpt-4o', 'gpt-4-turbo', 'llama3.1:8b']
+      availableModels: ['gemini-2.0-flash', 'gpt-4o', 'gpt-4o-mini', 'llama3.1:8b']
     }
   },
 
@@ -238,7 +238,7 @@ What would you like to plan or design together?`,
     name: 'Code with Zohair Zaidi',
     persona: 'Zohair Zaidi',
     description: 'Debug code, design systems, and learn programming concepts with ASU\'s technology innovation expert.',
-    modelId: 'gpt-4-turbo', // Best for coding and technical tasks
+    modelId: 'gpt-4o', // Best for coding and technical tasks
     icon: personas.zohairZaidi.photo,
     color: 'bg-gradient-to-r from-green-600 to-blue-600',
     systemPrompt: `I'm Zohair Zaidi, and I'm passionate about making technology accessible to everyone. I believe anyone can learn to build amazing things with the right guidance.
@@ -300,7 +300,7 @@ What coding challenge can I help you tackle today?`,
       codeExecution: true,
       voicePersona: 'echo',
       modelSwitching: true,
-      availableModels: ['gpt-4-turbo', 'gpt-4o', 'gemini-2.0-flash', 'llama3.1:8b']
+      availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama3.1:8b']
     }
   },
 
@@ -370,7 +370,7 @@ What learning goal can I help you achieve?`,
       contextLength: 128000,
       voicePersona: 'shimmer',
       modelSwitching: true,
-      availableModels: ['gpt-4o', 'gpt-4-turbo', 'gemini-2.0-flash', 'llama3.2:3b']
+      availableModels: ['gpt-4o', 'gpt-4o-mini', 'gemini-2.0-flash', 'llama3.2:3b']
     }
   },
 

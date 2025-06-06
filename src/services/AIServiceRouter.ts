@@ -47,9 +47,6 @@ export class AIServiceRouter {
       this.geminiService = new GeminiService({
         apiKey: geminiApiKey
       });
-      console.log('🔑 Gemini API key found - Gemini models enabled');
-    } else {
-      console.warn('⚠️ REACT_APP_GEMINI_API_KEY not found - Gemini models will fallback to Llama');
     }
 
     // Initialize OpenAI service if API key is available
@@ -58,9 +55,6 @@ export class AIServiceRouter {
       this.openaiService = new OpenAIService({
         apiKey: openaiApiKey
       });
-      console.log('🔑 OpenAI API key found - OpenAI models enabled');
-    } else {
-      console.warn('⚠️ REACT_APP_OPENAI_API_KEY not found - OpenAI models will fallback to Llama');
     }
   }
 
@@ -263,9 +257,16 @@ Make your responses visually appealing and easy to scan with proper formatting.`
     modelId: string,
     options: AIOptions
   ): Promise<AIResponse> {
-    console.log(`🦙 Sending request to Llama model: ${modelId}`);
+    // Map OpenAI/Gemini models to available Llama models when falling back
+    let llamaModelId = modelId;
+    if (this.isOpenAIModel(modelId) || this.isGeminiModel(modelId)) {
+      llamaModelId = 'llama3.1:8b'; // Default fallback model
+      console.log(`🦙 Mapping ${modelId} to ${llamaModelId} for Llama fallback`);
+    }
     
-    return this.llamaService.sendMessage(messages, modelId, options);
+    console.log(`🦙 Sending request to Llama model: ${llamaModelId}`);
+    
+    return this.llamaService.sendMessage(messages, llamaModelId, options);
   }
 
   /**
@@ -343,11 +344,18 @@ Make your responses visually appealing and easy to scan with proper formatting.`
     options: AIOptions
   ): AsyncGenerator<string, void, unknown> {
     try {
-      console.log(`🦙 Streaming from Llama model: ${modelId}`);
+      // Map OpenAI/Gemini models to available Llama models when falling back
+      let llamaModelId = modelId;
+      if (this.isOpenAIModel(modelId) || this.isGeminiModel(modelId)) {
+        llamaModelId = 'llama3.1:8b'; // Default fallback model
+        console.log(`🦙 Mapping ${modelId} to ${llamaModelId} for Llama fallback`);
+      }
+      
+      console.log(`🦙 Streaming from Llama model: ${llamaModelId}`);
       
       // For now, fall back to regular response and yield it all at once
       // TODO: Implement actual Llama streaming when available
-      const response = await this.sendToLlama(messages, modelId, options);
+      const response = await this.sendToLlama(messages, llamaModelId, options);
       yield response.content;
     } catch (error) {
       console.error('🚨 Llama streaming error:', error);
