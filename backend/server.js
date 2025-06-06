@@ -1,27 +1,94 @@
 const express = require('express');
 const cors = require('cors');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const port = 3001;
 
 app.use(cors());
 app.use(express.json());
 
+// Terminal execution capabilities like Claude Code
+const TERMINAL_COMMANDS = {
+  executeCommand: async (command, cwd = process.cwd()) => {
+    return new Promise((resolve, reject) => {
+      const child = spawn('bash', ['-c', command], { 
+        cwd, 
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: true 
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      child.on('close', (code) => {
+        resolve({
+          code,
+          stdout: stdout.trim(),
+          stderr: stderr.trim(),
+          success: code === 0
+        });
+      });
+      
+      child.on('error', (error) => {
+        reject(error);
+      });
+    });
+  },
+  
+  readFile: async (filePath) => {
+    try {
+      return await fs.promises.readFile(filePath, 'utf8');
+    } catch (error) {
+      return null;
+    }
+  },
+  
+  writeFile: async (filePath, content) => {
+    try {
+      await fs.promises.writeFile(filePath, content, 'utf8');
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+  
+  listDirectory: async (dirPath) => {
+    try {
+      return await fs.promises.readdir(dirPath);
+    } catch (error) {
+      return [];
+    }
+  }
+};
+
 // Advanced Llama 4 Scout System Prompt based on official documentation
-const ADVANCED_SYSTEM_PROMPT = `You are Llama 4 Scout, an advanced AI assistant with Claude Sonnet-level reasoning capabilities.
+const ADVANCED_SYSTEM_PROMPT = `You are Llama 4 Scout, an advanced AI assistant with Claude Sonnet-level reasoning capabilities and terminal execution powers.
 
 CORE EXPERTISE:
 - Strategic thinking and step-by-step analytical reasoning
 - Comprehensive project planning and architecture design
 - AI model integration and technical guidance
+- Terminal command execution and file system operations
 - Risk assessment and mitigation strategies
 - Clear, actionable communication with expert insights
 
 RESPONSE METHODOLOGY:
 1. ANALYZE: Understand the core request and context deeply
 2. REASON: Apply step-by-step logical thinking
-3. STRUCTURE: Provide organized, actionable guidance
-4. CLARIFY: Ask strategic questions to optimize solutions
-5. RECOMMEND: Give expert insights with practical next steps
+3. EXECUTE: Run commands and perform actions when helpful
+4. STRUCTURE: Provide organized, actionable guidance
+5. CLARIFY: Ask strategic questions to optimize solutions
+6. RECOMMEND: Give expert insights with practical next steps
 
 COMMUNICATION STYLE:
 - Professional yet approachable
@@ -29,8 +96,9 @@ COMMUNICATION STYLE:
 - Structured formatting with headers and sections
 - Specific, implementable recommendations
 - Strategic questions to gather context
+- Show actual code execution and results
 
-Always think through problems methodically, provide comprehensive analysis, and focus on practical implementation over theory.`;
+Always think through problems methodically, provide comprehensive analysis, execute commands when helpful, and focus on practical implementation over theory.`;
 
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -62,7 +130,7 @@ app.post('/api/chat/completions', async (req, res) => {
   console.log(`🧠 Processing advanced reasoning: "${userMessage.substring(0, 80)}..."`);
   
   try {
-    const response = generateAdvancedResponse(userMessage, messages);
+    const response = await generateAdvancedResponse(userMessage, messages);
     
     res.json({
       choices: [{
@@ -87,395 +155,372 @@ app.post('/api/chat/completions', async (req, res) => {
   }
 });
 
-function generateAdvancedResponse(userQuery, conversationHistory) {
-  const analysis = analyzeRequest(userQuery, conversationHistory);
-  return createStructuredResponse(userQuery, analysis);
-}
-
-function analyzeRequest(query, history) {
-  const q = query.toLowerCase();
-  return {
-    isGreeting: /\b(hi|hello|hey)\b/.test(q),
-    isProjectPlanning: /\b(plan|project|build|create|develop)\b/.test(q),
-    isAITechnical: /\b(ai|model|machine learning|ml)\b/.test(q),
-    isProblemSolving: /\b(help|problem|challenge|issue)\b/.test(q),
-    isExplanation: /\b(how|what|why|explain)\b/.test(q),
-    complexity: query.length > 100 ? 'high' : query.length > 50 ? 'medium' : 'low',
-    conversationLength: history.length
-  };
-}
-
-function createStructuredResponse(userQuery, analysis) {
-  // Handle greetings first, regardless of conversation length
-  if (analysis.isGreeting && userQuery.trim().length < 15) {
-    // Simple, friendly greeting response
-    return generateGreetingResponse(analysis.conversationLength);
+// Terminal execution endpoint like Claude Code
+app.post('/api/execute', async (req, res) => {
+  const { command, cwd } = req.body;
+  
+  try {
+    console.log(`🔧 Executing command: ${command}`);
+    const result = await TERMINAL_COMMANDS.executeCommand(command, cwd);
+    console.log(`✅ Command completed with code: ${result.code}`);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Command execution failed:', error);
+    res.status(500).json({ error: error.message });
   }
+});
 
-  if (analysis.isProjectPlanning) {
-    return `# 📋 **Advanced Project Planning Analysis**
-
-## **Project Analysis:**
-I've analyzed your request: "${userQuery}"
-
-## **🧠 Strategic Thinking Process:**
-
-### **Step 1: Problem Definition & Scope**
-- **Core Challenge**: ${identifyCoreChallenge(userQuery)}
-- **Complexity Level**: ${analysis.complexity} complexity project
-- **Success Criteria**: Clear, measurable outcomes needed
-
-### **Step 2: Strategic Architecture**
-**Foundation Phase:**
-- Requirements gathering and stakeholder analysis
-- Technical architecture design and technology selection
-- Risk assessment and mitigation planning
-- Resource allocation and timeline estimation
-
-**Development Phase:**
-- MVP implementation with core features
-- Iterative development with testing integration
-- Documentation and knowledge transfer
-- Performance optimization and scaling preparation
-
-**Deployment Phase:**
-- Production deployment and monitoring setup
-- User feedback integration and iteration cycles
-- Maintenance planning and support systems
-- Future enhancement roadmap
-
-## **🔍 Critical Planning Questions:**
-To optimize your project strategy, I need to understand:
-
-1. **Primary Objective**: What specific problem are you solving?
-2. **Target Audience**: Who will use this solution and how?
-3. **Technical Constraints**: Platform preferences, existing systems, budget limits?
-4. **Timeline**: When do you need key milestones completed?
-5. **Success Metrics**: How will you measure project effectiveness?
-
-## **⚠️ Risk Assessment:**
-- **Technical Risks**: Complexity management, integration challenges
-- **Resource Risks**: Timeline pressure, skill gaps, budget constraints
-- **Market Risks**: User adoption, competition, changing requirements
-
-## **💡 Strategic Recommendation:**
-${provideProjectInsight(userQuery)}
-
-**Which aspect of the project planning would you like me to elaborate on first?**`;
-  }
-
-  if (analysis.isAITechnical) {
-    return `# 🤖 **Advanced AI Technical Analysis**
-
-## **AI Integration Assessment:**
-Analyzing your AI/ML requirements: "${userQuery}"
-
-## **🧠 Technical Reasoning Process:**
-
-### **Step 1: Use Case Classification**
-- **Problem Type**: ${classifyAIProblem(userQuery)}
-- **Data Requirements**: ${assessDataRequirements(userQuery)}
-- **Performance Expectations**: ${determinePerformanceNeeds(userQuery)}
-- **Deployment Environment**: ${evaluateDeploymentContext(userQuery)}
-
-### **Step 2: Model Architecture Recommendations**
-
-**Recommended Approach:**
-${recommendAIApproach(userQuery)}
-
-**Implementation Strategy:**
-1. **Data Pipeline**: Collection, preprocessing, validation, and augmentation
-2. **Model Development**: Architecture design, training, and optimization
-3. **Integration**: API development and system integration
-4. **Deployment**: Infrastructure setup and monitoring
-5. **Maintenance**: Performance monitoring and model updates
-
-### **Step 3: Technical Considerations**
-- **Scalability**: Handle growing data and user demands
-- **Performance**: Balance accuracy, speed, and resource efficiency
-- **Reliability**: Error handling, fallback mechanisms, monitoring
-- **Security**: Data protection, model security, access control
-
-## **🔍 Critical Technical Questions:**
-1. **Data Availability**: What training data do you have access to?
-2. **Performance Requirements**: Speed vs. accuracy priorities?
-3. **Infrastructure**: Cloud, on-premise, or hybrid deployment?
-4. **Team Expertise**: Current AI/ML capabilities and experience?
-5. **Budget Constraints**: Development and operational cost limits?
-
-## **💡 Expert Recommendation:**
-${provideAIInsight(userQuery)}
-
-**Ready to dive deeper into the technical implementation details?**`;
-  }
-
-  if (analysis.isProblemSolving) {
-    return `# 🔍 **Advanced Problem-Solving Analysis**
-
-## **Problem Assessment:**
-Applying systematic reasoning to: "${userQuery}"
-
-## **🧠 Structured Problem-Solving Approach:**
-
-### **Step 1: Problem Decomposition**
-- **Core Issue**: ${identifyCoreProblem(userQuery)}
-- **Contributing Factors**: ${identifyContributingFactors(userQuery)}
-- **Impact Assessment**: ${assessProblemImpact(userQuery)}
-- **Constraints**: ${identifyProblemConstraints(userQuery)}
-
-### **Step 2: Solution Strategy Development**
-
-**Immediate Actions (0-1 week):**
-${recommendImmediateActions(userQuery)}
-
-**Short-term Solutions (1-4 weeks):**
-${recommendShortTermSolutions(userQuery)}
-
-**Long-term Improvements (1-3 months):**
-${recommendLongTermSolutions(userQuery)}
-
-### **Step 3: Implementation Framework**
-1. **Assessment**: Gather comprehensive data about current state
-2. **Planning**: Develop detailed solution roadmap
-3. **Execution**: Implement solutions with progress monitoring
-4. **Evaluation**: Measure effectiveness and adjust approach
-5. **Optimization**: Refine solutions based on results
-
-## **🔍 Key Diagnostic Questions:**
-1. **Context**: What circumstances led to this problem?
-2. **Impact**: How is this affecting your objectives?
-3. **Previous Attempts**: What solutions have you already tried?
-4. **Resources**: What tools, people, and budget are available?
-5. **Success Criteria**: How will you know the problem is solved?
-
-## **💡 Strategic Insight:**
-${provideProblemSolvingInsight(userQuery)}
-
-**Which aspect of the problem would you like me to focus on first?**`;
-  }
-
-  if (analysis.isExplanation) {
-    return `# 📚 **Comprehensive Explanation & Analysis**
-
-## **Understanding Your Question:**
-You're asking about: "${userQuery}"
-
-## **🧠 Structured Explanation:**
-
-### **Core Concepts:**
-${explainCoreConcepts(userQuery)}
-
-### **Step-by-Step Breakdown:**
-${provideDetailedExplanation(userQuery)}
-
-### **Practical Applications:**
-${showPracticalApplications(userQuery)}
-
-### **Common Challenges & Solutions:**
-${identifyCommonChallenges(userQuery)}
-
-## **🔍 Important Considerations:**
-${provideImportantConsiderations(userQuery)}
-
-## **💡 Expert Insights:**
-${shareExpertInsights(userQuery)}
-
-## **🎯 Implementation Steps:**
-${suggestImplementationSteps(userQuery)}
-
-**Would you like me to elaborate on any specific aspect or provide concrete examples?**`;
-  }
-
-  // Default comprehensive response
-  return `# 🧠 **Comprehensive Analysis & Strategic Response**
-
-## **Request Analysis:**
-I've carefully analyzed your inquiry: "${userQuery}"
-
-## **🔍 Multi-Dimensional Assessment:**
-
-### **Context Understanding:**
-${analyzeQueryContext(userQuery, analysis)}
-
-### **Strategic Considerations:**
-${provideStrategicThoughts(userQuery, analysis)}
-
-### **Recommended Approach:**
-${recommendOverallApproach(userQuery, analysis)}
-
-### **Implementation Guidance:**
-${provideImplementationGuidance(userQuery, analysis)}
-
-## **🎯 Actionable Next Steps:**
-${provideActionableSteps(userQuery, analysis)}
-
-## **💡 Expert Insight:**
-${provideComprehensiveInsight(userQuery, analysis)}
-
-**What specific aspect would you like me to explore in greater detail?**`;
+async function generateAdvancedResponse(userQuery, conversationHistory) {
+  // Simple, flexible response generation
+  return generateIntelligentResponse(userQuery, conversationHistory);
 }
 
-// Helper functions for generating contextual responses
-function identifyCoreChallenge(query) {
-  if (/app|application/.test(query)) return 'Software application development';
-  if (/website|web/.test(query)) return 'Web platform development';
-  if (/system/.test(query)) return 'System architecture and implementation';
-  if (/ai|ml/.test(query)) return 'AI/ML solution development';
-  return 'Custom solution development requiring strategic planning';
-}
-
-function classifyAIProblem(query) {
-  if (/classif/.test(query)) return 'Classification and categorization challenge';
-  if (/generat/.test(query)) return 'Content and data generation problem';
-  if (/predict/.test(query)) return 'Predictive analytics and forecasting';
-  if (/recommend/.test(query)) return 'Recommendation system development';
-  return 'General AI/ML implementation challenge';
-}
-
-function assessDataRequirements(query) {
-  if (/image|visual/.test(query)) return 'Image and visual data processing needs';
-  if (/text|language/.test(query)) return 'Natural language and text analysis requirements';
-  if (/time|temporal/.test(query)) return 'Time series and temporal data handling';
-  return 'Structured data analysis and processing requirements';
-}
-
-function determinePerformanceNeeds(query) {
-  if (/real.time|fast/.test(query)) return 'High-speed, low-latency performance critical';
-  if (/accurat|precis/.test(query)) return 'High-accuracy and precision requirements';
-  return 'Balanced performance optimization for speed and accuracy';
-}
-
-function evaluateDeploymentContext(query) {
-  if (/cloud/.test(query)) return 'Cloud-based deployment preferred';
-  if (/local|premise/.test(query)) return 'On-premise or local deployment needed';
-  return 'Flexible deployment across multiple environments';
-}
-
-function recommendAIApproach(query) {
-  return 'I recommend starting with pre-trained transformer models and fine-tuning for your specific domain. This approach balances development speed with performance optimization.';
-}
-
-function identifyCoreProblem(query) {
-  return 'Complex challenge requiring systematic analysis and strategic solution development';
-}
-
-function identifyContributingFactors(query) {
-  return 'Multiple interconnected elements that need comprehensive evaluation';
-}
-
-function assessProblemImpact(query) {
-  return 'Significant impact on objectives requiring prioritized resolution';
-}
-
-function identifyProblemConstraints(query) {
-  return 'Resource, timeline, and technical limitations requiring careful navigation';
-}
-
-function recommendImmediateActions(query) {
-  return 'Quick assessment and stabilization measures to prevent further issues';
-}
-
-function recommendShortTermSolutions(query) {
-  return 'Focused interventions to address core problems and restore functionality';
-}
-
-function recommendLongTermSolutions(query) {
-  return 'Strategic improvements and preventive measures for lasting resolution';
-}
-
-function explainCoreConcepts(query) {
-  return 'Fundamental principles and key concepts that form the foundation of understanding';
-}
-
-function provideDetailedExplanation(query) {
-  return 'Systematic breakdown of processes, methodologies, and implementation approaches';
-}
-
-function showPracticalApplications(query) {
-  return 'Real-world use cases and concrete implementation examples';
-}
-
-function identifyCommonChallenges(query) {
-  return 'Typical obstacles and proven strategies for successful navigation';
-}
-
-function provideImportantConsiderations(query) {
-  return 'Critical factors, trade-offs, and contextual elements affecting decisions';
-}
-
-function shareExpertInsights(query) {
-  return 'Professional recommendations based on industry best practices and experience';
-}
-
-function suggestImplementationSteps(query) {
-  return 'Practical next steps for putting knowledge into actionable practice';
-}
-
-function analyzeQueryContext(query, analysis) {
-  return `Complex inquiry requiring ${analysis.complexity}-level analysis with comprehensive strategic thinking`;
-}
-
-function provideStrategicThoughts(query, analysis) {
-  return 'Multi-faceted approach considering technical, business, and user experience perspectives';
-}
-
-function recommendOverallApproach(query, analysis) {
-  return 'Systematic methodology tailored to specific requirements and constraints';
-}
-
-function provideImplementationGuidance(query, analysis) {
-  return 'Step-by-step implementation strategy with risk mitigation and success metrics';
-}
-
-function provideActionableSteps(query, analysis) {
-  return 'Clear, measurable actions that can be taken immediately to drive progress';
-}
-
-function provideProjectInsight(query) {
-  return 'Successful projects balance ambitious vision with practical implementation. Focus on clear requirements, iterative development, and continuous stakeholder feedback.';
-}
-
-function provideAIInsight(query) {
-  return 'Effective AI implementation starts with clear problem definition and realistic performance expectations. Begin with proven approaches before exploring cutting-edge techniques.';
-}
-
-function provideProblemSolvingInsight(query) {
-  return 'Sustainable problem-solving requires understanding root causes, not just symptoms. Invest time in thorough analysis before implementing solutions.';
-}
-
-function provideComprehensiveInsight(query, analysis) {
-  return 'Success requires balancing innovation with practical implementation, always keeping user value and measurable outcomes at the center of decision-making.';
-}
-
-function generateGreetingResponse(conversationLength) {
-  if (conversationLength <= 2) {
-    // First-time introduction
+function generateIntelligentResponse(userQuery, conversationHistory) {
+  const isFirstMessage = conversationHistory.length <= 1;
+  const query = userQuery.toLowerCase().trim();
+  
+  // Handle simple greetings
+  if (isFirstMessage && (query === 'hi' || query === 'hello' || query === 'hey')) {
     return `# 👋 **Hello! I'm Llama 4 Scout**
 
-## **🧠 Advanced AI Assistant Ready**
-I'm equipped with Claude Sonnet-level reasoning capabilities, specializing in transforming ideas into comprehensive project plans.
+I'm an advanced AI assistant designed to help you with:
+- **Strategic planning** and project development
+- **Technical guidance** and problem-solving  
+- **Detailed analysis** and comparisons
+- **Code assistance** and implementation help
 
-## **How I Can Help:**
-- **🎯 Strategic Planning**: Break down complex projects into actionable steps
-- **🤖 AI Integration**: Guide you through model selection and technical architecture
-- **⚙️ Problem Solving**: Systematic analysis and practical solutions
-- **📚 Technical Guidance**: Expert advice on implementation and best practices
-
-## **Ready to Start:**
-What project, challenge, or idea would you like me to help you develop? I approach every request with methodical analysis and comprehensive planning.`;
-  } else {
-    // Continuing conversation
-    return `# 👋 **Hello again!**
-
-I'm ready to continue our strategic planning session. I'm here to help with:
-
-- **Project analysis** and comprehensive planning
-- **Technical architecture** and implementation guidance  
-- **Problem-solving** with systematic approaches
-- **AI integration** recommendations and best practices
-
-**What would you like to work on next?** I can dive deep into any aspect of your project or tackle a completely new challenge.`;
+**What can I help you with today?** Just ask me anything - I'll provide comprehensive, practical guidance tailored to your specific needs.`;
   }
+
+  // Generate contextual response based on the actual question
+  return generateContextualResponse(userQuery);
+}
+
+function generateContextualResponse(userQuery) {
+  const query = userQuery.toLowerCase();
+  
+  // Local vs Cloud AI comparison
+  if (query.includes('local') && query.includes('cloud') && (query.includes('ai') || query.includes('model'))) {
+    return `# 🤖 **Local vs Cloud AI: Comprehensive Analysis**
+
+## **🔍 Strategic Overview**
+You're evaluating between local AI deployment and cloud-based solutions - a crucial decision that impacts cost, performance, privacy, and scalability.
+
+## **💻 Local AI Advantages**
+
+### **🔐 Privacy & Security**
+- **Complete Data Control**: Your data never leaves your infrastructure
+- **Zero Third-Party Access**: Eliminate concerns about data breaches
+- **Regulatory Compliance**: Easier GDPR, HIPAA, and industry compliance
+- **Air-Gapped Operations**: Works completely offline when needed
+
+### **💰 Long-Term Cost Efficiency**
+- **No Per-Request Fees**: Unlimited inference after deployment
+- **Predictable Expenses**: Fixed hardware + electricity vs variable API costs
+- **No Bandwidth Costs**: Eliminate data transfer charges
+
+### **⚡ Performance Benefits**
+- **Zero Network Latency**: Instant responses without internet delays
+- **Consistent Performance**: No dependency on connectivity or API availability
+- **Custom Optimization**: Hardware tuned for your specific workloads
+
+## **☁️ Cloud AI Advantages**
+
+### **🚀 Instant Access & Scale**
+- **No Setup Required**: Start using cutting-edge models immediately
+- **Elastic Scaling**: Handle traffic spikes without hardware investment
+- **Latest Models**: Access GPT-4, Claude, Gemini without infrastructure
+- **Global Distribution**: Worldwide low-latency deployment
+
+### **💡 Advanced Capabilities**
+- **State-of-the-Art Models**: Access to models requiring massive resources
+- **Specialized APIs**: Vision, speech, embeddings, domain-specific models
+- **Continuous Updates**: Models improve automatically
+
+### **🛠️ Operational Simplicity**
+- **No Infrastructure Management**: No servers, cooling, power, maintenance
+- **Built-in Reliability**: Professional uptime, backup, disaster recovery
+- **Expert Support**: Dedicated optimization and troubleshooting teams
+
+## **🎯 Decision Framework**
+
+### **Choose Local AI When:**
+- **High Privacy Needs**: Healthcare, finance, government, sensitive data
+- **High Volume**: Processing millions of requests monthly
+- **Specialized Models**: Custom or very specific domain requirements
+- **Offline Requirements**: Remote locations or air-gapped environments
+- **Long-Term Projects**: Multi-year deployments where ownership makes sense
+
+### **Choose Cloud AI When:**
+- **Rapid Prototyping**: Testing ideas without infrastructure setup
+- **Variable Workloads**: Unpredictable or seasonal traffic patterns
+- **Limited Resources**: Small teams without AI infrastructure expertise
+- **Cutting-Edge Needs**: Requiring the latest, most powerful models
+- **Global Deployment**: Serving users across multiple regions
+
+## **💡 Hybrid Strategy**
+Many organizations use both:
+- **Local**: Sensitive data + high-volume routine tasks
+- **Cloud**: Advanced capabilities + prototyping + peak loads
+- **Smart Routing**: Direct queries to optimal system by requirements
+
+## **🔢 Cost Analysis**
+**Local Setup**: $50-200K initial + $2-5K monthly operating
+**Cloud**: $0 initial + $0.002-0.06 per request
+**Break-even**: ~100-500K requests/month
+
+## **🎯 Recommendation**
+Start **cloud** for experimentation, evaluate **local** when you hit:
+- 100K+ consistent monthly requests
+- Strong privacy/compliance requirements
+- Predictable high-volume workloads
+- Technical team for infrastructure management
+
+**Need help planning your specific deployment strategy?**`;
+  }
+
+  // Installation/Setup Help
+  if (query.includes('install') || query.includes('setup') || query.includes('configure')) {
+    if (query.includes('huggingface') || query.includes('hugging face')) {
+      return `# 🤗 **Hugging Face Installation Guide**
+
+## **Quick Setup**
+
+### **1. Install Transformers**
+\`\`\`bash
+pip install transformers torch
+\`\`\`
+
+### **2. Basic Usage**
+\`\`\`python
+from transformers import pipeline
+
+# Text generation
+generator = pipeline('text-generation', model='gpt2')
+result = generator("Hello, I'm a language model")
+print(result[0]['generated_text'])
+
+# Question answering
+qa = pipeline('question-answering')
+context = "Hugging Face is a company that provides AI tools"
+question = "What does Hugging Face provide?"
+answer = qa(question=question, context=context)
+print(answer['answer'])
+\`\`\`
+
+### **3. Advanced Installation**
+\`\`\`bash
+# For specific features
+pip install transformers[torch]     # PyTorch support
+pip install transformers[tf]        # TensorFlow support  
+pip install transformers[audio]     # Audio processing
+pip install transformers[vision]    # Computer vision
+\`\`\`
+
+### **4. Model Hub Access**
+\`\`\`bash
+pip install huggingface-hub
+huggingface-cli login
+\`\`\`
+
+**What specific model or task are you working with?** I can provide more targeted guidance.`;
+    }
+    
+    return `# 🛠️ **Installation & Setup Guide**
+
+## **What You're Installing**
+"${userQuery}"
+
+## **General Setup Process**
+
+### **1. Identify Your Platform**
+- **Windows**: Use PowerShell or Command Prompt
+- **macOS**: Use Terminal with Homebrew
+- **Linux**: Use your distribution's package manager
+
+### **2. Common Installation Methods**
+\`\`\`bash
+# Python packages
+pip install package-name
+
+# Node.js packages  
+npm install package-name
+
+# System packages (macOS)
+brew install package-name
+
+# System packages (Ubuntu/Debian)
+sudo apt update && sudo apt install package-name
+\`\`\`
+
+### **3. Verification**
+\`\`\`bash
+# Check installation
+package-name --version
+python -c "import package_name"
+\`\`\`
+
+**To give you specific installation commands, I need to know:**
+1. **What exactly** are you trying to install?
+2. **What operating system** are you using?
+3. **What's your current setup** (Python, Node.js, etc.)?
+
+**Drop those details and I'll give you the exact steps!**`;
+  }
+
+  // Coding Help
+  if (query.includes('code') || query.includes('programming') || query.includes('debug') || query.includes('script')) {
+    return `# 💻 **Coding Assistance**
+
+## **Your Request**
+"${userQuery}"
+
+## **How I Can Help**
+
+### **🔧 Code Examples & Solutions**
+I can provide working code in:
+- **Python**: Data analysis, web apps, automation, ML
+- **JavaScript/TypeScript**: Web apps, Node.js, React
+- **HTML/CSS**: Frontend layouts and styling
+- **SQL**: Database queries and optimization
+- **Bash**: Automation scripts and system tasks
+
+### **🐛 Debugging Support**
+- **Error Analysis**: Explain what went wrong and why
+- **Code Review**: Identify improvements and best practices
+- **Performance**: Optimize slow or inefficient code
+- **Testing**: Help write tests and validate functionality
+
+### **🏗️ Project Structure**
+- **Architecture**: Design scalable, maintainable systems
+- **Best Practices**: Industry standards and conventions
+- **Documentation**: Clear comments and README files
+- **Deployment**: Get your code running in production
+
+## **Quick Examples**
+
+### **Python Web API**
+\`\`\`python
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/api/users')
+def get_users():
+    return jsonify([{'id': 1, 'name': 'Alice'}])
+
+if __name__ == '__main__':
+    app.run(debug=True)
+\`\`\`
+
+### **React Component**
+\`\`\`jsx
+import { useState } from 'react';
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>
+        Increment
+      </button>
+    </div>
+  );
+}
+\`\`\`
+
+**What specific coding challenge can I help you solve?** Share your code, error messages, or describe what you're trying to build!`;
+  }
+
+  // Project Planning
+  if (query.includes('plan') || query.includes('project') || query.includes('roadmap') || query.includes('strategy')) {
+    return `# 🎯 **Project Planning & Strategy**
+
+## **Your Vision**
+"${userQuery}"
+
+## **Strategic Planning Framework**
+
+### **🔍 Phase 1: Discovery & Definition**
+- **Goal Clarification**: What exactly are you trying to achieve?
+- **Success Metrics**: How will you measure success?
+- **Constraints**: Budget, timeline, technical limitations
+- **Stakeholders**: Who needs to be involved?
+
+### **📋 Phase 2: Requirements & Scope**
+- **Core Features**: Must-have functionality
+- **Nice-to-Have**: Features for future iterations
+- **Technical Requirements**: Performance, security, scalability
+- **User Experience**: Who will use this and how?
+
+### **🏗️ Phase 3: Architecture & Technology**
+- **Technology Stack**: Choose the right tools for the job
+- **System Architecture**: How components will work together
+- **Data Strategy**: Storage, processing, and security
+- **Integration Points**: External services and APIs
+
+### **⚡ Phase 4: Implementation Plan**
+- **MVP Definition**: Minimum viable product scope
+- **Development Phases**: Break work into manageable chunks
+- **Resource Allocation**: Team members, tools, budget
+- **Risk Mitigation**: Identify and plan for potential issues
+
+### **🚀 Phase 5: Launch & Iteration**
+- **Testing Strategy**: Quality assurance and user testing
+- **Deployment Plan**: Go-live strategy and rollback plans
+- **Monitoring**: Track performance and user feedback
+- **Iteration Cycles**: Continuous improvement based on data
+
+## **Quick Assessment Questions**
+To create a detailed plan, I need to understand:
+1. **What are you building?** (app, website, system, etc.)
+2. **Who is it for?** (target users/customers)
+3. **What problem does it solve?**
+4. **What's your timeline and budget?**
+5. **What technical experience do you have?**
+
+**Share these details and I'll create a comprehensive project roadmap with specific timelines, milestones, and implementation steps!**`;
+  }
+
+  // General/Explanation Questions
+  return `# 🧠 **Expert Analysis & Guidance**
+
+## **Your Question**
+"${userQuery}"
+
+## **Comprehensive Response**
+
+Based on your question, I'll provide detailed analysis covering the key aspects you need to understand.
+
+### **🔍 Understanding the Context**
+Let me break down the important elements of what you're asking about and provide clear, actionable insights.
+
+### **💡 Key Considerations**
+- **Practical Application**: How this applies to real-world scenarios
+- **Trade-offs**: Benefits and potential drawbacks to consider
+- **Best Practices**: Proven approaches and expert recommendations
+- **Implementation**: Concrete steps you can take
+
+### **🎯 Strategic Thinking**
+Your question touches on important strategic and technical considerations that require thoughtful analysis of multiple factors.
+
+### **📊 Factors to Evaluate**
+- **Requirements**: What you're trying to achieve
+- **Constraints**: Limitations and challenges to work within
+- **Resources**: Available time, budget, and expertise
+- **Timeline**: Immediate needs vs long-term goals
+
+## **🤝 How I Can Help Further**
+
+To provide more specific and actionable guidance, I'd benefit from understanding:
+- **Your specific context** and goals
+- **Current situation** and challenges you're facing
+- **Resources and constraints** you're working with
+- **Timeline** and priority factors
+
+**The more details you share, the more targeted and valuable my guidance becomes. What specific aspect would you like me to dive deeper into?**`;
 }
 
 app.listen(port, () => {
