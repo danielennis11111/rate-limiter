@@ -148,6 +148,9 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const recognition = useRef<SpeechRecognition | null>(null);
   const synthesis = useRef<SpeechSynthesis | null>(null);
 
+  // Check if running in demo mode (GitHub Pages without API keys)
+  const isDemoMode = !process.env.REACT_APP_GEMINI_API_KEY && !process.env.REACT_APP_OPENAI_API_KEY;
+
   useEffect(() => {
     // Initialize Local TTS service for Virtual Avatar Builder
     if (template.id === 'virtual-avatar-builder') {
@@ -891,7 +894,38 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-white">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 shadow-md">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold">🚀 Demo Mode - GitHub Pages Deployment</h3>
+              <p className="text-xs text-blue-100 mt-1">
+                This is a public demo without API keys for security. 
+                <strong> Only local Llama models are available.</strong> 
+                To access OpenAI/Gemini models, clone this repo and add your API keys locally.
+              </p>
+              <div className="flex items-center space-x-4 mt-2 text-xs">
+                <span className="flex items-center space-x-1">
+                  <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                  <span>Local Llama Models</span>
+                </span>
+                <span className="flex items-center space-x-1">
+                  <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                  <span>API Models (Requires Keys)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Notification System */}
       <NotificationSystem 
         notifications={notifications}
@@ -1222,6 +1256,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       </div>
     </div>
   );
-  };
-  
+};
+
 export default ConversationView; 

@@ -1,4 +1,4 @@
-name: Deploy to Vercel
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -23,30 +23,18 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
-    - name: Build application
+    - name: Build application (without API keys for security)
       env:
-        REACT_APP_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         REACT_APP_ENVIRONMENT: production
         REACT_APP_DEFAULT_MODEL: gemini-2.0-flash
-        REACT_APP_ENABLE_IMAGE_GENERATION: true
-        REACT_APP_ENABLE_CODE_EXECUTION: true
-        REACT_APP_ENABLE_SEARCH_GROUNDING: true
+        REACT_APP_ENABLE_IMAGE_GENERATION: false
+        REACT_APP_ENABLE_CODE_EXECUTION: false
+        REACT_APP_ENABLE_SEARCH_GROUNDING: false
       run: npm run build
       
-    - name: Deploy to Vercel
-      uses: vercel/action@v1
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        vercel-args: '--prod'
-      env:
-        REACT_APP_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        
-    - name: Deploy to GitHub Pages (fallback)
-      if: failure()
+    - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./build
-        cname: your-custom-domain.com  # Optional: replace with your domain 
+        # cname: your-custom-domain.com  # Optional: uncomment and replace with your domain 
