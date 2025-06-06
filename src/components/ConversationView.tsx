@@ -201,7 +201,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       setVoiceStatus(prev => ({ 
         ...prev, 
         isSpeaking: false, 
-        error: 'OpenAI voice service unavailable' 
+        error: null // Don't show error to user for voice failures
       }));
     }
   };
@@ -227,6 +227,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
     // Add user message
     conversationManager.addMessage(conversation.id, userMessage);
+    const originalInput = input.trim();
     setInput('');
     setIsLoading(true);
     onConversationUpdate();
@@ -240,10 +241,21 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       }));
       
       // Add current message
-      llamaMessages.push({ role: 'user', content: input.trim() });
+      llamaMessages.push({ role: 'user', content: originalInput });
 
-      // Call AI service
-      const response = await aiService.sendMessage(
+      // Create a placeholder assistant message for streaming
+      const assistantMessage: Message = conversationManager.addMessage(conversation.id, {
+        role: 'assistant',
+        content: '',
+        tokens: 0,
+        modelUsed: template.modelId
+      });
+
+      onConversationUpdate();
+
+      // Stream the response in real-time
+      console.log('🚀 About to call streamMessage with model:', template.modelId);
+      const stream = aiService.streamMessage(
         llamaMessages,
         template.modelId,
         {
@@ -255,23 +267,79 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         }
       );
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.content,
-        timestamp: new Date(),
-        tokens: response.usage?.completion_tokens || 0,
-        modelUsed: template.modelId
-      };
-
-      conversationManager.addMessage(conversation.id, assistantMessage);
+      let fullContent = '';
+      console.log('🔄 Starting to stream response...');
       
-      // Auto-speak AI response if voice is enabled (NOT user input)
-      if (isVoiceEnabled && !voiceStatus.isSpeaking) {
-        speakText(response.content, true); // true = this is an AI response
+      try {
+        let chunkCount = 0;
+        for await (const chunk of stream) {
+          chunkCount++;
+          console.log(`📝 Received chunk #${chunkCount}:`, chunk);
+          fullContent += chunk;
+          
+          // Update the assistant message with the streaming content
+          assistantMessage.content = fullContent;
+          assistantMessage.tokens = estimateTokenCount(fullContent);
+          
+          // Trigger a re-render to show the streaming text
+          onConversationUpdate();
+          
+          // Small delay to make streaming visible
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        console.log(`✅ Streaming complete. Total chunks: ${chunkCount}, Content length: ${fullContent.length}`);
+        
+        // If no content was streamed, fall back to regular API call
+        if (fullContent.length === 0) {
+          console.log('⚠️ No content from streaming, falling back to regular API...');
+          const response = await aiService.sendMessage(
+            llamaMessages,
+            template.modelId,
+            {
+              ragContext,
+              systemPrompt: template.systemPrompt,
+              temperature: template.parameters.temperature,
+              maxTokens: template.parameters.maxTokens,
+              topP: template.parameters.topP
+            }
+          );
+          
+          assistantMessage.content = response.content;
+          assistantMessage.tokens = response.usage?.completion_tokens || 0;
+          onConversationUpdate();
+        }
+      } catch (streamError) {
+        console.error('🚨 Streaming error:', streamError);
+        // Fallback to regular API call
+        try {
+          console.log('🔄 Falling back to regular API call...');
+          const response = await aiService.sendMessage(
+            llamaMessages,
+            template.modelId,
+            {
+              ragContext,
+              systemPrompt: template.systemPrompt,
+              temperature: template.parameters.temperature,
+              maxTokens: template.parameters.maxTokens,
+              topP: template.parameters.topP
+            }
+          );
+          
+          assistantMessage.content = response.content;
+          assistantMessage.tokens = response.usage?.completion_tokens || 0;
+          onConversationUpdate();
+        } catch (fallbackError) {
+          console.error('🚨 Fallback API call also failed:', fallbackError);
+          assistantMessage.content = 'Sorry, I encountered an error while thinking. Please try again.';
+          onConversationUpdate();
+        }
       }
       
-      onConversationUpdate();
+      // Auto-speak AI response if voice is enabled (NOT user input)
+      if (isVoiceEnabled && !voiceStatus.isSpeaking && fullContent) {
+        speakText(fullContent, true); // true = this is an AI response
+      }
+      
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
@@ -552,12 +620,16 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           ))
         )}
         
-        {isLoading && (
+        {isLoading && conversation.messages.length > 0 && conversation.messages[conversation.messages.length - 1].content === '' && (
           <div className="flex justify-start">
             <div className="bg-gray-100 px-4 py-2 rounded-lg">
               <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-gray-600">Thinking...</span>
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+                <span className="text-gray-600">I'm thinking out loud...</span>
               </div>
             </div>
           </div>

@@ -13,27 +13,45 @@ export class ModelManager {
   private initializeModels(): void {
     const defaultModels: AIModel[] = [
       {
+        id: 'gpt-4o',
+        name: 'GPT-4o',
+        description: 'OpenAI\'s most advanced multimodal model - fast streaming',
+        status: 'online',
+        capabilities: ['text-generation', 'conversation', 'reasoning', 'vision', 'multimodal'],
+        maxTokens: 128000,
+        isMultimodal: true
+      },
+      {
+        id: 'gpt-4-turbo', 
+        name: 'GPT-4 Turbo',
+        description: 'OpenAI\'s high-performance model for complex tasks - fast streaming',
+        status: 'online',
+        capabilities: ['text-generation', 'conversation', 'coding', 'reasoning'],
+        maxTokens: 128000,
+        isMultimodal: false
+      },
+      {
+        id: 'gemini-2.0-flash',
+        name: 'Gemini 2.0 Flash',
+        description: 'Google\'s lightning-fast multimodal model - real-time streaming',
+        status: 'online',
+        capabilities: ['text-generation', 'conversation', 'multimodal', 'vision'],
+        maxTokens: 1000000,
+        isMultimodal: true
+      },
+      {
         id: 'llama3.2:3b',
         name: 'Llama 3.2 3B',
-        description: 'Fast and efficient general-purpose model',
+        description: 'Fast local model - instant responses',
         status: 'offline',
         capabilities: ['text-generation', 'conversation', 'reasoning'],
         maxTokens: 128000,
         isMultimodal: false
       },
       {
-        id: 'llama3.2:11b-vision',
-        name: 'Llama 3.2 11B Vision',
-        description: 'Multimodal model with vision capabilities',
-        status: 'offline',
-        capabilities: ['text-generation', 'vision', 'image-analysis'],
-        maxTokens: 128000,
-        isMultimodal: true
-      },
-      {
         id: 'llama3.1:8b',
         name: 'Llama 3.1 8B',
-        description: 'Balanced performance and capability',
+        description: 'Powerful local model - instant responses',
         status: 'offline',
         capabilities: ['text-generation', 'conversation', 'coding'],
         maxTokens: 128000,

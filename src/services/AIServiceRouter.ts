@@ -84,6 +84,25 @@ export class AIServiceRouter {
   }
 
   /**
+   * Stream message to appropriate AI service for real-time responses
+   */
+  async *streamMessage(
+    messages: AIMessage[],
+    modelId: string,
+    options: AIOptions = {}
+  ): AsyncGenerator<string, void, unknown> {
+    console.log(`🤖 Streaming request to ${this.getServiceName(modelId)} for model: ${modelId}`);
+
+    if (this.isOpenAIModel(modelId) && this.openaiService) {
+      yield* this.streamFromOpenAI(messages, modelId, options);
+    } else if (this.isGeminiModel(modelId) && this.geminiService) {
+      yield* this.streamFromGemini(messages, modelId, options);
+    } else {
+      yield* this.streamFromLlama(messages, modelId, options);
+    }
+  }
+
+  /**
    * Get service name for logging
    */
   private getServiceName(modelId: string): string {
@@ -247,6 +266,93 @@ Make your responses visually appealing and easy to scan with proper formatting.`
     console.log(`🦙 Sending request to Llama model: ${modelId}`);
     
     return this.llamaService.sendMessage(messages, modelId, options);
+  }
+
+  /**
+   * Stream request to OpenAI API
+   */
+  private async *streamFromOpenAI(
+    messages: AIMessage[],
+    modelId: string,
+    options: AIOptions
+  ): AsyncGenerator<string, void, unknown> {
+    if (!this.openaiService) {
+      console.warn('🔄 OpenAI service not available, falling back to Llama');
+      yield* this.streamFromLlama(messages, modelId, options);
+      return;
+    }
+
+    try {
+      // Convert messages to OpenAI format
+      const openaiMessages = messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content
+      }));
+
+      console.log(`🧠 Streaming from OpenAI model: ${modelId}`);
+      
+      const stream = this.openaiService.streamChat(openaiMessages, {
+        model: modelId,
+        systemPrompt: options.systemPrompt,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        ragContext: options.ragContext
+      });
+
+      for await (const chunk of stream) {
+        yield chunk;
+      }
+
+    } catch (error) {
+      console.error('🚨 OpenAI streaming error, falling back to Llama:', error);
+      yield* this.streamFromLlama(messages, modelId, options);
+    }
+  }
+
+  /**
+   * Stream request to Gemini API
+   */
+  private async *streamFromGemini(
+    messages: AIMessage[],
+    modelId: string,
+    options: AIOptions
+  ): AsyncGenerator<string, void, unknown> {
+    if (!this.geminiService) {
+      console.warn('🔄 Gemini service not available, falling back to Llama');
+      yield* this.streamFromLlama(messages, modelId, options);
+      return;
+    }
+
+    try {
+      // For now, fall back to regular response and yield it all at once
+      // TODO: Implement actual Gemini streaming when available
+      const response = await this.sendToGemini(messages, modelId, options);
+      yield response.content;
+    } catch (error) {
+      console.error('🚨 Gemini streaming error, falling back to Llama:', error);
+      yield* this.streamFromLlama(messages, modelId, options);
+    }
+  }
+
+  /**
+   * Stream request to Llama service
+   */
+  private async *streamFromLlama(
+    messages: AIMessage[],
+    modelId: string,
+    options: AIOptions
+  ): AsyncGenerator<string, void, unknown> {
+    try {
+      console.log(`🦙 Streaming from Llama model: ${modelId}`);
+      
+      // For now, fall back to regular response and yield it all at once
+      // TODO: Implement actual Llama streaming when available
+      const response = await this.sendToLlama(messages, modelId, options);
+      yield response.content;
+    } catch (error) {
+      console.error('🚨 Llama streaming error:', error);
+      yield 'Sorry, I encountered an error processing your request. Please try again.';
+    }
   }
 
   /**

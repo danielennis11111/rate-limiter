@@ -73,6 +73,8 @@ export interface ConversationTemplate {
     dataAnalysis?: boolean;
     algorithmTesting?: boolean;
     voicePersona?: string;
+    modelSwitching?: boolean;
+    availableModels?: string[];
   };
 }
 
