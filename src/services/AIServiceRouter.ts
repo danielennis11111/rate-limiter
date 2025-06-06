@@ -15,6 +15,11 @@ interface AIResponse {
     total_tokens: number;
   };
   model: string;
+  fallbackInfo?: {
+    originalModel: string;
+    fallbackModel: string;
+    reason: string;
+  };
 }
 
 interface AIOptions {
@@ -106,10 +111,15 @@ export class AIServiceRouter {
   }
 
   /**
-   * Check if model should use OpenAI API
+   * Check if model should use OpenAI API (including 2025 models)
    */
   private isOpenAIModel(modelId: string): boolean {
-    return modelId.startsWith('gpt-') || modelId.startsWith('o1-');
+    return modelId.startsWith('gpt-') || 
+           modelId.startsWith('o1-') || 
+           modelId.startsWith('o3') ||
+           modelId.startsWith('o4-') ||
+           modelId === 'o3' ||
+           modelId === 'o4-mini';
   }
 
   /**
@@ -129,7 +139,15 @@ export class AIServiceRouter {
   ): Promise<AIResponse> {
     if (!this.geminiService) {
       console.warn('🔄 Gemini service not available, falling back to Llama');
-      return this.sendToLlama(messages, modelId, options);
+      const fallbackResponse = await this.sendToLlama(messages, modelId, options);
+      return {
+        ...fallbackResponse,
+        fallbackInfo: {
+          originalModel: modelId,
+          fallbackModel: fallbackResponse.model,
+          reason: 'Gemini service not configured'
+        }
+      };
     }
 
     try {
@@ -197,9 +215,17 @@ Make your responses visually appealing and easy to scan with proper formatting.`
         model: modelId
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('🚨 Gemini API error, falling back to Llama:', error);
-      return this.sendToLlama(messages, modelId, options);
+      const fallbackResponse = await this.sendToLlama(messages, modelId, options);
+      return {
+        ...fallbackResponse,
+        fallbackInfo: {
+          originalModel: modelId,
+          fallbackModel: fallbackResponse.model,
+          reason: error?.message?.includes('rate limit') ? 'Rate limit exceeded' : 'API error'
+        }
+      };
     }
   }
 
@@ -213,7 +239,15 @@ Make your responses visually appealing and easy to scan with proper formatting.`
   ): Promise<AIResponse> {
     if (!this.openaiService) {
       console.warn('🔄 OpenAI service not available, falling back to Llama');
-      return this.sendToLlama(messages, modelId, options);
+      const fallbackResponse = await this.sendToLlama(messages, modelId, options);
+      return {
+        ...fallbackResponse,
+        fallbackInfo: {
+          originalModel: modelId,
+          fallbackModel: fallbackResponse.model,
+          reason: 'OpenAI service not configured'
+        }
+      };
     }
 
     try {
@@ -259,12 +293,29 @@ Make your responses visually appealing and easy to scan with proper formatting.`
           completion_tokens: response.usage?.completionTokens || 0,
           total_tokens: response.usage?.totalTokens || 0
         },
-        model: modelId
+        model: response.model || modelId // Use actual model from response
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('🚨 OpenAI API error, falling back to Llama:', error);
-      return this.sendToLlama(messages, modelId, options);
+      
+      // Check if it's a rate limit error
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        // Throw a specific rate limit error that the UI can catch
+        throw new Error(`RATE_LIMITED:${modelId}:${error.message}`);
+      }
+      
+      // Return fallback response with actual model info
+      const fallbackResponse = await this.sendToLlama(messages, modelId, options);
+      return {
+        ...fallbackResponse,
+        model: `${fallbackResponse.model} (fallback from ${modelId})`,
+        fallbackInfo: {
+          originalModel: modelId,
+          fallbackModel: fallbackResponse.model,
+          reason: error?.message?.includes('rate limit') ? 'Rate limit exceeded' : 'API error'
+        }
+      };
     }
   }
 
@@ -298,8 +349,8 @@ Make your responses visually appealing and easy to scan with proper formatting.`
   ): AsyncGenerator<string, void, unknown> {
     if (!this.openaiService) {
       console.warn('🔄 OpenAI service not available, falling back to Llama');
-      yield* this.streamFromLlama(messages, modelId, options);
-      return;
+      // For streaming, we can't return fallback info easily, but we can throw a special error
+      throw new Error(`FALLBACK:${modelId}:OpenAI service not configured`);
     }
 
     try {
@@ -342,9 +393,17 @@ Make your responses visually appealing and easy to scan with proper formatting.`
         yield chunk;
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('🚨 OpenAI streaming error, falling back to Llama:', error);
-      yield* this.streamFromLlama(messages, modelId, options);
+      
+      // Check if it's a rate limit error
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        // Throw a specific rate limit error that the UI can catch
+        throw new Error(`RATE_LIMITED:${modelId}:${error.message}`);
+      }
+      
+      // For streaming fallbacks, throw a special error
+      throw new Error(`FALLBACK:${modelId}:${error?.message?.includes('rate limit') ? 'Rate limit exceeded' : 'API error'}`);
     }
   }
 

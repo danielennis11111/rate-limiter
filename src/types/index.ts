@@ -2,7 +2,7 @@ export interface AIModel {
   id: string;
   name: string;
   description: string;
-  status: 'online' | 'offline' | 'loading';
+  status: 'online' | 'offline' | 'loading' | 'limited';
   capabilities: string[];
   maxTokens: number;
   isMultimodal?: boolean;
@@ -103,6 +103,7 @@ export interface ModelStatus {
   lastChecked: Date;
   responseTime?: number;
   error?: string;
+  additionalInfo?: string;
 }
 
 export interface UserPreferences {

@@ -10,6 +10,9 @@ import { estimateTokenCount, calculateTokenUsage, DocumentContext } from '../uti
 import { EnhancedRAGProcessor } from '../utils/enhancedRAG';
 import { OpenAIVoiceService } from '../services/OpenAIVoiceService';
 import TokenUsagePreview from './TokenUsagePreview';
+import NotificationSystem, { Notification } from './NotificationSystem';
+import ModelSwitcher from './ModelSwitcher';
+import ProgressiveThinkingIndicator from './ProgressiveThinkingIndicator';
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -55,6 +58,9 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     error: null
   });
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [currentModelId, setCurrentModelId] = useState(template.modelId);
+  const [actualModelUsed, setActualModelUsed] = useState<string>('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +112,29 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     
     setIsVoiceEnabled(!!recognition.current && !!synthesis.current);
   }, []);
+
+  // Add notification helper functions
+  const addNotification = (notification: Omit<Notification, 'id'>) => {
+    const newNotification = {
+      ...notification,
+      id: Date.now().toString()
+    };
+    setNotifications(prev => [...prev, newNotification]);
+  };
+
+  const dismissNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleModelSwitch = (newModelId: string) => {
+    setCurrentModelId(newModelId);
+    addNotification({
+      type: 'info',
+      title: 'Model Switched',
+      message: `Now using ${modelManager.getAllModels().find(m => m.id === newModelId)?.name || newModelId}`,
+      duration: 3000
+    });
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -257,16 +286,16 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         role: 'assistant',
         content: '',
         tokens: 0,
-        modelUsed: template.modelId
+        modelUsed: currentModelId
       });
 
       onConversationUpdate();
 
-      // Stream the response in real-time
+      // Stream the response in real-time using current model
 
       const stream = aiService.streamMessage(
         llamaMessages,
-        template.modelId,
+        currentModelId,
         {
           ragContext,
           systemPrompt: template.systemPrompt,
@@ -277,12 +306,12 @@ const ConversationView: React.FC<ConversationViewProps> = ({
       );
 
       let fullContent = '';
+      let wasRateLimited = false;
 
-      
-              try {
-          for await (const chunk of stream) {
-            fullContent += chunk;
-          
+      try {
+        for await (const chunk of stream) {
+          fullContent += chunk;
+        
           // Update the assistant message with the streaming content
           assistantMessage.content = fullContent;
           assistantMessage.tokens = estimateTokenCount(fullContent);
@@ -290,12 +319,12 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           // Trigger a re-render to show the streaming text
           onConversationUpdate();
           
-                  // Add natural pauses for sentence-like streaming
-        if (chunk.includes('.') || chunk.includes('!') || chunk.includes('?') || chunk.includes('\n')) {
-          await new Promise(resolve => setTimeout(resolve, 100)); // Longer pause for sentences
-        } else {
-          await new Promise(resolve => setTimeout(resolve, 20)); // Short pause for words
-        }
+          // Add natural pauses for sentence-like streaming
+          if (chunk.includes('.') || chunk.includes('!') || chunk.includes('?') || chunk.includes('\n')) {
+            await new Promise(resolve => setTimeout(resolve, 100)); // Longer pause for sentences
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 20)); // Short pause for words
+          }
         }
 
         
@@ -304,7 +333,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
           const response = await aiService.sendMessage(
             llamaMessages,
-            template.modelId,
+            currentModelId,
             {
               ragContext,
               systemPrompt: template.systemPrompt,
@@ -316,16 +345,91 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           
           assistantMessage.content = response.content;
           assistantMessage.tokens = response.usage?.completion_tokens || 0;
+          assistantMessage.modelUsed = response.model;
+          setActualModelUsed(response.model);
+
+          // Check for fallback and show notification
+          if (response.fallbackInfo) {
+            addNotification({
+              type: 'warning',
+              title: 'Model Switched Automatically',
+              message: `${response.fallbackInfo.originalModel} ${response.fallbackInfo.reason.toLowerCase()}. Switched to ${response.fallbackInfo.fallbackModel}.`,
+              duration: 8000,
+              actions: [
+                {
+                  label: 'Try Gemini',
+                  onClick: () => handleModelSwitch('gemini-2.0-flash'),
+                  variant: 'primary'
+                },
+                {
+                  label: 'Try GPT-4o',
+                  onClick: () => handleModelSwitch('gpt-4o'),
+                  variant: 'secondary'
+                }
+              ]
+            });
+          }
+
           onConversationUpdate();
         }
-      } catch (streamError) {
+            } catch (streamError: any) {
         console.error('🚨 Streaming error:', streamError);
+        
+        // Check for rate limiting
+        if (streamError?.message?.startsWith('RATE_LIMITED:')) {
+          wasRateLimited = true;
+          const [_, originalModel, errorMsg] = streamError.message.split(':');
+          
+          // Show rate limit notification
+          addNotification({
+            type: 'warning',
+            title: 'Rate Limited',
+            message: `${originalModel} has reached its rate limit. Switching to backup model.`,
+            duration: 0, // Persistent
+            actions: [
+              {
+                label: 'Try Gemini',
+                onClick: () => handleModelSwitch('gemini-2.0-flash'),
+                variant: 'primary'
+              },
+              {
+                label: 'Try Llama',
+                onClick: () => handleModelSwitch('llama3.1:8b'),
+                variant: 'secondary'
+              }
+            ]
+          });
+        }
+
+        // Check for automatic fallbacks
+        if (streamError?.message?.startsWith('FALLBACK:')) {
+          const [_, originalModel, reason] = streamError.message.split(':');
+          
+          addNotification({
+            type: 'info',
+            title: 'Model Switched Automatically',
+            message: `${originalModel} ${reason.toLowerCase()}. Switched to Llama for this response.`,
+            duration: 8000,
+            actions: [
+              {
+                label: 'Try Gemini',
+                onClick: () => handleModelSwitch('gemini-2.0-flash'),
+                variant: 'primary'
+              },
+              {
+                label: 'Try GPT-4o',
+                onClick: () => handleModelSwitch('gpt-4o'),
+                variant: 'secondary'
+              }
+            ]
+          });
+        }
+        
         // Fallback to regular API call
         try {
-
           const response = await aiService.sendMessage(
             llamaMessages,
-            template.modelId,
+            currentModelId,
             {
               ragContext,
               systemPrompt: template.systemPrompt,
@@ -337,9 +441,56 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           
           assistantMessage.content = response.content;
           assistantMessage.tokens = response.usage?.completion_tokens || 0;
+          assistantMessage.modelUsed = response.model; // Track actual model used
+          setActualModelUsed(response.model);
+
+          // Check for fallback and show notification
+          if (response.fallbackInfo) {
+            addNotification({
+              type: 'warning',
+              title: 'Model Switched Automatically',
+              message: `${response.fallbackInfo.originalModel} ${response.fallbackInfo.reason.toLowerCase()}. Switched to ${response.fallbackInfo.fallbackModel}.`,
+              duration: 8000, // Show for 8 seconds
+              actions: [
+                {
+                  label: 'Try Gemini',
+                  onClick: () => handleModelSwitch('gemini-2.0-flash'),
+                  variant: 'primary'
+                },
+                {
+                  label: 'Try GPT-4o',
+                  onClick: () => handleModelSwitch('gpt-4o'),
+                  variant: 'secondary'
+                }
+              ]
+            });
+          }
+
           onConversationUpdate();
-        } catch (fallbackError) {
+        } catch (fallbackError: any) {
           console.error('🚨 Fallback API call also failed:', fallbackError);
+          
+          // Check for rate limiting in fallback too
+          if (fallbackError?.message?.startsWith('RATE_LIMITED:')) {
+            addNotification({
+              type: 'error',
+              title: 'All Models Rate Limited',
+              message: 'All available models are currently rate limited. Please try again later.',
+              duration: 0,
+              actions: [
+                {
+                  label: 'Retry in 1 minute',
+                  onClick: () => {
+                    setTimeout(() => {
+                      dismissNotification('rate-limit-all');
+                    }, 60000);
+                  },
+                  variant: 'primary'
+                }
+              ]
+            });
+          }
+          
           assistantMessage.content = 'Sorry, I encountered an error while thinking. Please try again.';
           onConversationUpdate();
         }
@@ -412,6 +563,11 @@ const ConversationView: React.FC<ConversationViewProps> = ({
 
   return (
     <div className="flex flex-col h-full">
+      {/* Notification System */}
+      <NotificationSystem 
+        notifications={notifications}
+        onDismiss={dismissNotification}
+      />
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between">
@@ -476,18 +632,29 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           </div>
         </div>
         
-        {/* Template Info */}
-        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Model: {template.modelId}</span>
-            <span className="text-gray-600">Context: {template.features.contextLength.toLocaleString()} tokens</span>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {template.capabilities.slice(0, 4).map((capability, index) => (
-              <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                {capability}
+        {/* Model Switcher and Template Info */}
+        <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <ModelSwitcher
+            models={modelManager.getAllModels()}
+            currentModelId={currentModelId}
+            onModelSwitch={handleModelSwitch}
+            compact={true}
+          />
+          
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">
+                Using: {actualModelUsed || currentModelId}
               </span>
-            ))}
+              <span className="text-gray-600">Context: {template.features.contextLength.toLocaleString()} tokens</span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {template.capabilities.slice(0, 4).map((capability, index) => (
+                <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                  {capability}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
         
@@ -627,20 +794,11 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           ))
         )}
         
-        {isLoading && conversation.messages.length > 0 && conversation.messages[conversation.messages.length - 1].content === '' && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 px-4 py-2 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                </div>
-                <span className="text-gray-600">I'm thinking out loud...</span>
-              </div>
-            </div>
-          </div>
-        )}
+        <ProgressiveThinkingIndicator 
+          isThinking={isLoading && conversation.messages.length > 0 && conversation.messages[conversation.messages.length - 1].content === ''}
+          modelName={modelManager.getAllModels().find(m => m.id === currentModelId)?.name || currentModelId}
+          canStream={currentModelId.includes('gpt') || currentModelId.includes('gemini')}
+        />
         
         <div ref={messagesEndRef} />
       </div>

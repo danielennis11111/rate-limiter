@@ -6,6 +6,7 @@ import ConversationSidebar from './ConversationSidebar';
 import ConversationView from './ConversationView';
 import ModelStatusBar from './ModelStatusBar';
 import WelcomeExperience from './WelcomeExperience';
+import DebugPanel from './DebugPanel';
 
 interface ConversationHubProps {
   // Future props for integration
@@ -128,7 +129,30 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          
+          {/* Top Bar */}
+          <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            {/* Mobile Menu Button */}
+            {isMobile && (
+              <button
+                onClick={toggleSidebar}
+                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
+            
+            {/* Title */}
+            <h1 className="text-lg font-semibold text-gray-900">
+              ASU AI Experiences
+            </h1>
+            
+            {/* Model Status */}
+            <div className="flex items-center">
+              <ModelStatusBar models={models} />
+            </div>
+          </div>
 
           {/* Welcome Experience */}
           <div className="flex-1 overflow-scroll">
@@ -176,7 +200,29 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          {/* Mobile Menu Button */}
+          {isMobile && (
+            <button
+              onClick={toggleSidebar}
+              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          )}
+          
+          {/* Conversation Title */}
+          <h1 className="text-lg font-semibold text-gray-900">
+            {activeConversation?.title || 'Conversation'}
+          </h1>
+          
+          {/* Model Status */}
+          <div className="flex items-center">
+            <ModelStatusBar models={models} />
+          </div>
+        </div>
 
         {/* Conversation View */}
         <div className="flex-1 overflow-hidden">
@@ -195,6 +241,9 @@ const ConversationHub: React.FC<ConversationHubProps> = () => {
           />
         </div>
       </div>
+      
+      {/* Debug Panel */}
+      <DebugPanel modelManager={modelManager} />
     </div>
   );
 };

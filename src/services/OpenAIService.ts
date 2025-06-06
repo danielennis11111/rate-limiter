@@ -30,8 +30,16 @@ export interface OpenAIResponse {
 export class OpenAIService {
   private openai: OpenAI;
   private supportedModels = [
+    // 🔥 Latest 2025 Models
+    'o3',
+    'o4-mini',
+    'gpt-4.1',
+    'gpt-4.1-mini',
+    'gpt-4.1-nano',
+    // 📈 Current Generation Models
     'gpt-4o',
-    'gpt-4o-mini', 
+    'gpt-4o-mini',
+    'gpt-4-turbo',
     'gpt-3.5-turbo'
   ];
 
@@ -175,7 +183,7 @@ Make your responses visually appealing and easy to scan.`;
   }
 
   /**
-   * Stream a chat completion response (for future real-time features)
+   * 🌊 Stream chat completion with proper SSE handling
    */
   public async *streamChat(
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
@@ -190,12 +198,13 @@ Make your responses visually appealing and easy to scan.`;
         ragContext
       } = options;
 
-      // Build messages (same as above)
+      // Build messages array with enhanced system prompt
       const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
 
       if (systemPrompt || ragContext) {
         let systemContent = systemPrompt || 'You are a helpful AI assistant.';
         
+        // Add enhanced formatting instructions for better readability
         systemContent += `\n\n## 📝 Response Formatting Guidelines
 
 **ALWAYS format your responses using proper markdown:**
@@ -220,26 +229,203 @@ Make your responses visually appealing and easy to scan.`;
         });
       }
 
+      // Add conversation messages
       apiMessages.push(...messages);
 
-      const stream = await this.openai.chat.completions.create({
-        model,
-        messages: apiMessages,
-        temperature,
-        max_tokens: maxTokens,
-        stream: true
+      console.log(`🌊 OpenAI Streaming: Starting ${model} stream...`);
+
+      // Use optimized parameters for the specific model
+      const optimizedParams = this.getOptimizedParams(model);
+
+      const response = await fetch(`${this.openai.baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.openai.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: apiMessages,
+          temperature: optimizedParams.temperature,
+          max_tokens: optimizedParams.max_tokens,
+          stream: true, // Enable streaming
+          stream_options: {
+            include_usage: true // Get token usage in stream
+          }
+        })
       });
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        if (content) {
-          yield content;
+      if (!response.ok) {
+        throw new Error(`OpenAI streaming error: ${response.status} ${response.statusText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete lines from buffer
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            // Skip empty lines and comments
+            if (!trimmedLine || trimmedLine.startsWith(':')) {
+              continue;
+            }
+
+            // Process data lines
+            if (trimmedLine.startsWith('data: ')) {
+              const data = trimmedLine.slice(6); // Remove 'data: ' prefix
+              
+              // Check for completion signal
+              if (data === '[DONE]') {
+                console.log('✅ OpenAI Streaming: Completed');
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                
+                if (content) {
+                  yield content;
+                }
+
+                // Handle usage information if available
+                if (parsed.usage) {
+                  console.log(`📊 OpenAI Streaming Usage: ${parsed.usage.total_tokens} tokens`);
+                }
+
+              } catch (parseError) {
+                // Skip malformed JSON chunks
+                console.warn('Failed to parse streaming chunk:', parseError);
+              }
+            }
+          }
         }
+      } finally {
+        reader.releaseLock();
       }
 
     } catch (error: any) {
       console.error('❌ OpenAI Streaming Error:', error);
-      throw new Error(`OpenAI streaming error: ${error?.message || 'Unknown error'}`);
+      
+      // Enhanced error handling for streaming
+      if (error?.status === 429) {
+        throw new Error('RATE_LIMITED:openai-stream:Streaming rate limit exceeded');
+      } else if (error?.status === 401) {
+        throw new Error('OpenAI streaming authentication failed');
+      } else {
+        throw new Error(`OpenAI streaming error: ${error?.message || 'Unknown error'}`);
+      }
+    }
+  }
+
+  /**
+   * Get optimized parameters for specific models to reduce rate limiting
+   */
+  private getOptimizedParams(modelId: string) {
+    const baseParams = {
+      temperature: 0.7,
+      max_tokens: 2048, // Conservative default to minimize rate limiting
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0
+    };
+
+    // Model-specific optimizations based on 2025 capabilities
+    switch (modelId) {
+      // 🔥 2025 Reasoning Models - Higher tokens for complex tasks
+      case 'o3':
+        return { ...baseParams, max_tokens: 8192, temperature: 0.3 }; // Lower temp for reasoning
+      case 'o4-mini':
+        return { ...baseParams, max_tokens: 4096, temperature: 0.4 }; // Balanced for efficiency
+      
+      // 🚀 2025 Agentic Models - Optimized for execution
+      case 'gpt-4.1':
+        return { ...baseParams, max_tokens: 6144, temperature: 0.5 }; // Mid-range for execution
+      case 'gpt-4.1-mini':
+        return { ...baseParams, max_tokens: 3072, temperature: 0.6 }; // Faster response
+      case 'gpt-4.1-nano':
+        return { ...baseParams, max_tokens: 1024, temperature: 0.8 }; // Ultra-fast, minimal tokens
+      
+      // 📈 Current Generation Models
+      case 'gpt-4o':
+        return { ...baseParams, max_tokens: 4096, temperature: 0.7 }; // Standard flagship
+      case 'gpt-4o-mini':
+        return { ...baseParams, max_tokens: 2048, temperature: 0.8 }; // Cost-effective
+      case 'gpt-4-turbo':
+        return { ...baseParams, max_tokens: 3072, temperature: 0.6 }; // Legacy support
+      
+      default:
+        return baseParams;
+    }
+  }
+
+  /**
+   * 🎵 Enhanced streaming with progressive loading states
+   */
+  public async *streamChatWithProgress(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options: OpenAIChatOptions = {},
+    onProgress?: (state: 'connecting' | 'streaming' | 'thinking' | 'complete') => void
+  ): AsyncGenerator<string, void, unknown> {
+    onProgress?.('connecting');
+    
+    try {
+      let hasStartedStreaming = false;
+      let thinkingTimeout: NodeJS.Timeout | undefined;
+
+      // Set up thinking indicator for delays
+      const startThinkingIndicator = () => {
+        thinkingTimeout = setTimeout(() => {
+          onProgress?.('thinking');
+        }, 2000); // Show thinking after 2 seconds of no content
+      };
+
+      const stopThinkingIndicator = () => {
+        if (thinkingTimeout) {
+          clearTimeout(thinkingTimeout);
+          thinkingTimeout = undefined;
+        }
+      };
+
+      startThinkingIndicator();
+
+      for await (const chunk of this.streamChat(messages, options)) {
+        if (!hasStartedStreaming) {
+          hasStartedStreaming = true;
+          stopThinkingIndicator();
+          onProgress?.('streaming');
+        }
+
+        yield chunk;
+        
+        // Reset thinking timer on each chunk
+        stopThinkingIndicator();
+        startThinkingIndicator();
+      }
+
+      stopThinkingIndicator();
+      onProgress?.('complete');
+
+    } catch (error) {
+      onProgress?.('complete');
+      throw error;
     }
   }
 
