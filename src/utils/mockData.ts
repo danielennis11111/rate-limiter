@@ -98,13 +98,50 @@ export const mockConversations: Conversation[] = [
 
 // Available AI models with different context windows
 export const availableModels: ModelInfo[] = [
+  // Llama 4 Models (newest and most powerful)
+  {
+    name: 'Llama-4-Scout-17B-16E-Instruct',
+    maxContextTokens: 10240000, // 10M tokens!
+    description: 'Llama 4 Scout with massive 10M token context',
+    costPer1kTokens: 0, // Local model
+    supportsCompression: true,
+    emergencyFallback: 'Llama3.2-3B-Instruct'
+  },
+  {
+    name: 'Llama-4-Maverick-17B-128E-Instruct', 
+    maxContextTokens: 1024000, // 1M tokens
+    description: 'Llama 4 Maverick for complex reasoning',
+    costPer1kTokens: 0, // Local model
+    supportsCompression: true,
+    emergencyFallback: 'Llama3.2-3B-Instruct'
+  },
+  
+  // Llama 3.2 Models
+  {
+    name: 'Llama3.2-11B-Vision-Instruct',
+    maxContextTokens: 128000,
+    description: 'Multimodal Llama 3.2 with vision capabilities',
+    costPer1kTokens: 0, // Local model
+    supportsCompression: true,
+    emergencyFallback: 'Llama3.2-3B-Instruct'
+  },
+  {
+    name: 'Llama3.2-3B-Instruct',
+    maxContextTokens: 128000,
+    description: 'Fast, efficient Llama 3.2 for quick responses',
+    costPer1kTokens: 0, // Local model
+    supportsCompression: true,
+    emergencyFallback: 'Gemini 2.0 Flash'
+  },
+
+  // Cloud Models (for comparison/fallback)
   {
     name: 'Gemini 2.0 Flash',
     maxContextTokens: 1000000,
     description: 'Latest multimodal model with 1M token context',
     costPer1kTokens: 0.00075,
     supportsCompression: true,
-    emergencyFallback: 'Gemini 1.5 Pro'
+    emergencyFallback: 'Llama3.2-3B-Instruct'
   },
   {
     name: 'Gemini 1.5 Pro',
@@ -112,7 +149,7 @@ export const availableModels: ModelInfo[] = [
     description: 'Advanced reasoning with 2M token context window',
     costPer1kTokens: 0.00125,
     supportsCompression: true,
-    emergencyFallback: 'Gemini 2.0 Flash'
+    emergencyFallback: 'Llama3.2-3B-Instruct'
   },
   {
     name: 'GPT-4 Turbo',
@@ -120,15 +157,7 @@ export const availableModels: ModelInfo[] = [
     description: 'OpenAI model with 128K context window',
     costPer1kTokens: 0.01,
     supportsCompression: true,
-    emergencyFallback: 'GPT-3.5 Turbo'
-  },
-  {
-    name: 'GPT-3.5 Turbo',
-    maxContextTokens: 16385,
-    description: 'Fast and efficient for most tasks',
-    costPer1kTokens: 0.002,
-    supportsCompression: true,
-    emergencyFallback: 'GPT-3.5 Turbo'
+    emergencyFallback: 'Llama3.2-3B-Instruct'
   }
 ];
 

@@ -1,5 +1,6 @@
 import { ContextIndex, IndexEntry, SemanticNode } from '../types/contextOptimization';
 import { Message, Conversation } from '../types';
+import { Buffer } from 'buffer';
 
 export class ContextIndexer {
   private static instance: ContextIndexer;

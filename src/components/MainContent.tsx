@@ -5,6 +5,8 @@ import { ContextLimitWarning } from './ContextLimitWarning';
 import { TokenUsagePreview } from './TokenUsagePreview';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { RAGControls } from './RAGControls';
+import { LlamaServerStatus } from './LlamaServerStatus';
+import { LlamaService } from '../utils/llamaService';
 
 interface MainContentProps {
   messages: Message[];
@@ -24,6 +26,7 @@ interface MainContentProps {
   uploadedPDFs: PDFDocument[];
   onUploadPDF: (file: File) => Promise<void>;
   onRemovePDF: (id: string) => void;
+  llamaService: LlamaService;
 }
 
 export const MainContent: React.FC<MainContentProps> = ({
@@ -43,7 +46,8 @@ export const MainContent: React.FC<MainContentProps> = ({
   onToggleRAG,
   uploadedPDFs,
   onUploadPDF,
-  onRemovePDF
+  onRemovePDF,
+  llamaService
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [showWarning, setShowWarning] = useState(true);
@@ -264,6 +268,11 @@ export const MainContent: React.FC<MainContentProps> = ({
               />
             </div>
           )}
+
+          {/* Llama Server Status */}
+          <div className="mb-4 flex justify-center">
+            <LlamaServerStatus llamaService={llamaService} />
+          </div>
 
           <p className="text-xs text-gray-500 text-center">
             Unblock and Focus bot may display incorrect or false information.
