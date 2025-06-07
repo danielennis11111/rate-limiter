@@ -26,6 +26,7 @@ import { convertRAGResultsToCitations, filterAndRankCitations, createRAGDiscover
 import { IncantationEngine } from '../services/IncantationEngine';
 import CodeSuggestion from './CodeSuggestion';
 import IncantationButton from './IncantationButton';
+import { AvatarInterface } from './AvatarInterface';
 
 
 // import { contextManager } from '../utils/contextManager'; // TODO: Implement context management
