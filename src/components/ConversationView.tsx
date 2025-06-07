@@ -12,6 +12,7 @@ import { EnhancedRAGProcessor } from '../utils/enhancedRAG';
 // import { AvatarTTSService } from '../services/AvatarTTSService';
 import LocalTTSService from '../services/LocalTTSService';
 import LocalEnvironmentBuilder from './LocalEnvironmentBuilder';
+import LocalServerManager from './LocalServerManager';
 import { getUnifiedTTS } from '../services/UnifiedTTSService';
 import TokenUsagePreview from './TokenUsagePreview';
 import NotificationSystem, { Notification } from './NotificationSystem';
@@ -23,6 +24,10 @@ import HighlightedText from './HighlightedText';
 import RAGDiscoveryPanel from './RAGDiscoveryPanel';
 import { convertRAGResultsToCitations, filterAndRankCitations, createRAGDiscovery, parseTextWithHighlighting } from '../utils/citationParser';
 import { IncantationEngine } from '../services/IncantationEngine';
+import CodeSuggestion from './CodeSuggestion';
+import IncantationButton from './IncantationButton';
+
+
 // import { contextManager } from '../utils/contextManager'; // TODO: Implement context management
 
 interface ConversationViewProps {
@@ -109,6 +114,8 @@ const ConversationView: React.FC<ConversationViewProps> = ({
   const [currentCitations, setCurrentCitations] = useState<any[]>([]);
   const [ragDiscoveries, setRagDiscoveries] = useState<any[]>([]);
   const [incantationEngine] = useState(() => new IncantationEngine());
+
+  const [workingDirectory, setWorkingDirectory] = useState('/Users/danielennis/ai-apps/rate limit message');
   
   // Persona-specific voice mapping
   const getPersonaVoice = (templateId: string, personaName: string): string => {
@@ -893,6 +900,153 @@ const ConversationView: React.FC<ConversationViewProps> = ({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // File operations handlers
+  const handleApplyChanges = async (filePath: string, content: string) => {
+    try {
+      const response = await fetch('http://localhost:3001/api/files/apply-changes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filePath,
+          content,
+          directory: workingDirectory,
+          backup: true
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Show success notification
+        console.log(`✅ Applied changes to ${filePath}`);
+      } else {
+        throw new Error(result.error || 'Failed to apply changes');
+      }
+    } catch (error) {
+      console.error('Failed to apply changes:', error);
+      alert(`Failed to apply changes: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    console.log('💭 Changes discarded');
+  };
+
+  // Command execution handler
+  const handleExecuteCommand = async (command: string, directory?: string): Promise<{ success: boolean; output: string; error?: string }> => {
+    try {
+      const response = await fetch('http://localhost:3001/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          command,
+          cwd: directory || workingDirectory
+        })
+      });
+
+      const result = await response.json();
+      
+      return {
+        success: result.success,
+        output: result.stdout || result.stderr || 'Command completed',
+        error: result.success ? undefined : result.stderr
+      };
+    } catch (error) {
+      return {
+        success: false,
+        output: '',
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  };
+
+  // Enhanced message rendering with code suggestions and incantations
+  const renderEnhancedMessage = (content: string) => {
+    // Look for code suggestions in markdown format
+    const codeSuggestionRegex = /```suggestion:([^\n]+)\n([\s\S]*?)```/g;
+    const incantationRegex = /```incantation:([^\n]+)\n([^\n]+)```/g;
+    
+    let lastIndex = 0;
+    const elements: React.ReactNode[] = [];
+    let match;
+
+    // Process code suggestions
+    while ((match = codeSuggestionRegex.exec(content)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        elements.push(
+          <div key={`text-${lastIndex}`} className="prose prose-sm max-w-none">
+            <ReactMarkdown>{content.slice(lastIndex, match.index)}</ReactMarkdown>
+          </div>
+        );
+      }
+
+      const filePath = match[1];
+      const code = match[2];
+      
+      elements.push(
+        <CodeSuggestion
+          key={`suggestion-${match.index}`}
+          filePath={filePath}
+          suggestedCode={code}
+          description={`Update ${filePath}`}
+          onApprove={handleApplyChanges}
+          onDiscard={handleDiscardChanges}
+        />
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Reset regex and process incantations
+    incantationRegex.lastIndex = 0;
+    while ((match = incantationRegex.exec(content)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        elements.push(
+          <div key={`text-${lastIndex}`} className="prose prose-sm max-w-none">
+            <ReactMarkdown>{content.slice(lastIndex, match.index)}</ReactMarkdown>
+          </div>
+        );
+      }
+
+      const description = match[1];
+      const command = match[2];
+      
+      elements.push(
+        <IncantationButton
+          key={`incantation-${match.index}`}
+          command={command}
+          description={description}
+          workingDirectory={workingDirectory}
+          onExecute={handleExecuteCommand}
+        />
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      elements.push(
+        <div key={`text-${lastIndex}`} className="prose prose-sm max-w-none">
+          <ReactMarkdown>{content.slice(lastIndex)}</ReactMarkdown>
+        </div>
+      );
+    }
+
+    // If no special content found, render normally
+    if (elements.length === 0) {
+      return (
+        <div className="prose prose-sm max-w-none">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      );
+    }
+
+    return <div className="space-y-2">{elements}</div>;
+  };
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-white">
       {/* Demo Mode Banner */}
@@ -931,6 +1085,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         notifications={notifications}
         onDismiss={dismissNotification}
       />
+      
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between">
@@ -950,8 +1105,11 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             </div>
           </div>
           
-          {/* Model Switcher - Top Right */}
+          {/* Model Switcher and Local Server Manager - Top Right */}
           <div className="flex items-center space-x-3">
+
+            
+            <LocalServerManager />
             <ModelSwitcher
               models={modelManager.getAllModels().filter(model => model.status === 'online')}
               currentModelId={currentModelId}
@@ -960,8 +1118,6 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             />
           </div>
         </div>
-        
-        
         
         {voiceStatus.error && (
           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
@@ -1017,7 +1173,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
             >
               <div
                 className={`max-w-3xl px-4 py-2 rounded-lg ${
-                  message.role === 'user'
+                  message.role === 'user' 
                     ? 'bg-[#FFC627] text-[#191919]'
                     : 'bg-gray-100 text-gray-900'
                 }`}
@@ -1053,26 +1209,30 @@ const ConversationView: React.FC<ConversationViewProps> = ({
                       })()}
                     </div>
                   ) : (
-                    // Standard markdown rendering for messages without citations
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => <div className="mb-2">{children}</div>,
-                        h1: ({ children }) => <h1 className="text-lg font-semibold mb-2">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-base font-semibold mb-2">{children}</h2>,
-                        h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
-                        strong: ({ children }) => {
-                          // Handle citation formatting
-                          const text = String(children);
-                          if (text.startsWith('[Source:')) {
-                            return <span className="inline-block mt-2 px-2 py-1 bg-black bg-opacity-10 rounded-md text-xs font-medium border-l-2 border-current border-opacity-30">{children}</span>;
+                    // Enhanced markdown rendering for messages without citations - includes new coding features
+                    message.role === 'user' ? (
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <div className="mb-2">{children}</div>,
+                          h1: ({ children }) => <h1 className="text-lg font-semibold mb-2">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-base font-semibold mb-2">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
+                          strong: ({ children }) => {
+                            // Handle citation formatting
+                            const text = String(children);
+                            if (text.startsWith('[Source:')) {
+                              return <span className="inline-block mt-2 px-2 py-1 bg-black bg-opacity-10 rounded-md text-xs font-medium border-l-2 border-current border-opacity-30">{children}</span>;
+                            }
+                            return <strong>{children}</strong>;
                           }
-                          return <strong>{children}</strong>;
-                        }
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    ) : (
+                      renderEnhancedMessage(message.content)
+                    )
                   )}
                 </div>
                 <div className={`text-xs mt-1 ${
@@ -1146,7 +1306,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({
         />
       </div>
 
-      {/* Input */}
+      {/* Input area */}
       <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
         <form onSubmit={handleSubmit} className="flex space-x-2">
           {/* RAG Controls */}
@@ -1254,6 +1414,8 @@ const ConversationView: React.FC<ConversationViewProps> = ({
           </p>
         </div>
       </div>
+
+
     </div>
   );
 };
